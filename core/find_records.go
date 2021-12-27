@@ -51,10 +51,9 @@ func filterWeapons(weapons []types.WeaponSchedule, data Shift, schedules types.S
 	return nil, nil
 }
 
-// FindRecords uses the given iterators to pull the shift data from the various sources based on the parameters, and finds records based on the set filters.
-//
-// Breaking change v3->v4:
-//  • Returns an array of errors if something or multiple things go wrong.
+/*
+FindRecords uses the given iterators to pull the shift data from the various sources based on the parameters, and finds records based on the set filters.
+*/
 func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents types.EventArr, tides types.TideArr, weapons []types.WeaponSchedule, client *http.Client, output io.Writer) []error {
 	var errs []error
 	scheduleList, errs2 := types.GetSchedules(client)

@@ -31,7 +31,9 @@ const (
 	ltCohockCharge          recordName = "LT Cohock Charge"
 )
 
-// Shift is a generic source of match results, with only the necessary details available, accessible as methods.
+/*
+Shift is a generic source of match results, with only the necessary details available, accessible as methods.
+*/
 type Shift interface {
 	GetTotalEggs() int
 	GetStage(types.Schedule) (*types.Stage, []error)
@@ -86,20 +88,22 @@ func getAllRecords() map[recordName]*map[string]*map[types.WeaponSchedule]*recor
 	return records
 }
 
-// ShiftIterator fulfils the design pattern of iterating through a set of Shift, only being able to progress one way.
-// New in v4:
-//  • GetAddress function
+/*
+ShiftIterator fulfils the design pattern of iterating through a set of Shift, only being able to progress one way.
+*/
 type ShiftIterator interface {
 	Next() (Shift, []error)
 	GetAddress() string
 }
 
-// NoMoreShiftsError implements the error interface.
-// New in v4
+/*
+NoMoreShiftsError implements the error interface.
+*/
 type NoMoreShiftsError struct{}
 
-// Error returns a static message of "no more shifts".
-// New in v4
-func (_ *NoMoreShiftsError) Error() string {
+/*
+Error returns a static message of "no more shifts".
+*/
+func (*NoMoreShiftsError) Error() string {
 	return "no more shifts"
 }

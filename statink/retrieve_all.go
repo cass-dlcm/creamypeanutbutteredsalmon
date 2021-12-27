@@ -17,7 +17,9 @@ import (
 	"time"
 )
 
-// GetAllShifts downloads every shiftStatInk from the provided stat.ink server and saves it to a gzipped jsonlines file.
+/*
+GetAllShifts downloads every shiftStatInk from the provided stat.ink server and saves it to a gzipped jsonlines file.
+*/
 func GetAllShifts(statInkServer types.Server, client *http.Client) (errs []error) {
 	var jsonLinesWriter *gzip.Writer
 	file, err := os.Create(fmt.Sprintf("statink_shifts/%s_out.jl.gz", statInkServer.ShortName))
@@ -270,7 +272,9 @@ func (s *shiftStatInkIterator) Next() (shift core.Shift, errs []error) {
 	return nil, errs
 }
 
-// LoadFromFileIterator creates a core.ShiftIterator that iterates over the stat.ink jsonlimnes in the file.
+/*
+LoadFromFileIterator creates a core.ShiftIterator that iterates over the stat.ink jsonlimnes in the file.
+*/
 func LoadFromFileIterator(server types.Server) (core.ShiftIterator, []error) {
 	errs := []error{}
 	returnVal := shiftStatInkIterator{serverAddr: server.Address}

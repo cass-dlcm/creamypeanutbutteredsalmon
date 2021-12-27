@@ -348,7 +348,6 @@ func (s *shiftSplatnetIterator) GetAddress() string {
 func (s *shiftSplatnet) GetClearWave() int {
 	if s.JobResult.IsClear {
 		return 3
-	} else {
-		return *s.JobResult.FailureWave - 1
 	}
+	return *s.JobResult.FailureWave - 1
 }

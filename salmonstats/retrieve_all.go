@@ -18,7 +18,9 @@ import (
 	"time"
 )
 
-// GetAllShifts downloads every shiftSalmonStats from the provided salmon-stats/api server and saves it to a gzipped jsonlines file.
+/*
+GetAllShifts downloads every shiftSalmonStats from the provided salmon-stats/api server and saves it to a gzipped jsonlines file.
+*/
 func GetAllShifts(server types.Server, client *http.Client) (errs []error) {
 	log.Println("Pulling Salmon Run data from online...")
 	var jsonLinesWriter *gzip.Writer
@@ -309,7 +311,9 @@ func (s *shiftSalmonStatsIterator) Next() (shift core.Shift, errs []error) {
 	return nil, errs
 }
 
-// LoadFromFileIterator creates a core.ShiftIterator that iterates over the salmon-stats/api jsonlimnes in the file.
+/*
+LoadFromFileIterator creates a core.ShiftIterator that iterates over the salmon-stats/api jsonlimnes in the file.
+*/
 func LoadFromFileIterator(server types.Server) (iter *shiftSalmonStatsIterator, errs []error) {
 	iter = &shiftSalmonStatsIterator{serverAddr: server.Address}
 	var err error

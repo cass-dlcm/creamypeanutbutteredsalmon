@@ -5,10 +5,14 @@ import (
 	"runtime"
 )
 
-// Event is an integer enum for denoting the event of a wave.
+/*
+Event is an integer enum for denoting the event of a wave.
+*/
 type Event int
 
-// The seven Salmon Run events.
+/*
+The seven Salmon Run events.
+*/
 const (
 	WaterLevels Event = iota
 	Rush
@@ -19,7 +23,9 @@ const (
 	Mothership
 )
 
-// String returns the name of the Event, currently hardcoded as the en-US locale, or an error if the Event isn't a valid value.
+/*
+String returns the name of the Event, currently hardcoded as the en-US locale, or an error if the Event isn't a valid value.
+*/
 func (e Event) String() (string, []error) {
 	var errs []error
 	switch e {
@@ -45,7 +51,9 @@ func (e Event) String() (string, []error) {
 	return "", errs
 }
 
-// StringToEvent returns a pointer to an Event if the Event matches the inputted string, otherwise it returns an error.
+/*
+StringToEvent returns a pointer to an Event if the Event matches the inputted string, otherwise it returns an error.
+*/
 func StringToEvent(inStr string) (*Event, []error) {
 	var eventRes Event
 	switch inStr {
@@ -73,11 +81,15 @@ func StringToEvent(inStr string) (*Event, []error) {
 	return &eventRes, nil
 }
 
-// EventArr is a wrapper around an Event slice for the purpose of using the IsAllElementExist function.
+/*
+EventArr is a wrapper around an Event slice for the purpose of using the IsAllElementExist and HasElement functions.
+*/
 type EventArr []Event
 
-// IsAllElementExist finds whether the given Event slice contains every element in the EventArr.
-func (e *EventArr) IsAllElementExist(arr []Event) bool {
+/*
+IsAllElementExist finds whether the given EventArr contains every element in the EventArr being called on.
+*/
+func (e *EventArr) IsAllElementExist(arr EventArr) bool {
 	for _, i := range *e {
 		found := false
 		for _, j := range arr {
@@ -92,6 +104,9 @@ func (e *EventArr) IsAllElementExist(arr []Event) bool {
 	return true
 }
 
+/*
+HasElement finds whether the given Event is in the EventArr.
+*/
 func (e *EventArr) HasElement(event Event) bool {
 	for _, i := range *e {
 		if i == event {

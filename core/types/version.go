@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var currVersion = version{4, 0, 0}
+var currVersion = version{0, 1, 1}
 
 type version struct {
 	Major  uint64
@@ -118,11 +118,13 @@ type releasesType []struct {
 	} `json:"assets"`
 }
 
-// CheckForUpdate downloads the latest version of this file and checks to see which version number is higher.
-// If the downloaded version is higher, execution ends.
-// If the binary version is higher, it warns about being a prerelease.
+/*
+CheckForUpdate downloads the latest version of this file and checks to see which version number is higher.
+If the downloaded version is higher, execution ends.
+If the binary version is higher, it warns about being a prerelease.
+*/
 func CheckForUpdate(client *http.Client) (errs []error) {
-	url := "https://github.com/repos/cass-dlcm/creamypeanutbutteredsalmon/releases"
+	url := "https://api.github.com/repos/cass-dlcm/creamypeanutbutteredsalmon/releases"
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -150,7 +152,7 @@ func CheckForUpdate(client *http.Client) (errs []error) {
 		return errs
 	}
 	versionStr := releases[len(releases)-1].TagName
-	versionSubstrs := strings.Split(versionStr, ", ")
+	versionSubstrs := strings.Split(versionStr, ".")
 	if versionSubstrs[0] == "" {
 		return nil
 	}

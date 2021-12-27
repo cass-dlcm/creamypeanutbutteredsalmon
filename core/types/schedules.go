@@ -9,7 +9,9 @@ import (
 	"time"
 )
 
-// Schedule is a struct of all the Salmon Run rotations since the game's launch.
+/*
+Schedule is a struct of all the Salmon Run rotations since the game's launch.
+*/
 type Schedule struct {
 	Result []struct {
 		Start    string    `json:"start"`
@@ -30,7 +32,9 @@ type Schedule struct {
 	} `json:"result"`
 }
 
-// GetSchedules downloads and returns a filled Schedule.
+/*
+GetSchedules downloads and returns a filled Schedule, or all the errors it encounters along with a stack trace.
+*/
 func GetSchedules(client *http.Client) (Schedule, []error) {
 	var errs []error
 	url := "https://spla2.yuu26.com/coop"

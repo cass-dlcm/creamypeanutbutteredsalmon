@@ -17,11 +17,9 @@ import (
 	"time"
 )
 
-// GetAllShifts downloads every shiftSplatnet from the SplatNet server and saves it to a gzipped jsonlines file.
-//
-// Breaking changes v3->v4:
-//  • takes in sessionToken, cookie, and locale as params instead of using viper
-//  • returns new (or current if unchanged) sessionToken and cookie alongside any errors
+/*
+GetAllShifts downloads every shiftSplatnet from the SplatNet server and saves it to a gzipped jsonlines file.
+*/
 func GetAllShifts(sessionToken, cookie, locale string, client *http.Client) (*string, *string, []error) {
 	var errs []error
 	_, timezone := time.Now().Zone()
@@ -369,7 +367,9 @@ func GetAllShifts(sessionToken, cookie, locale string, client *http.Client) (*st
 	return &sessionToken, &cookie, nil
 }
 
-// LoadFromFileIterator creates a core.ShiftIterator that iterates over the SplatNet jsonlimnes in the file.
+/*
+LoadFromFileIterator creates a core.ShiftIterator that iterates over the SplatNet jsonlimnes in the file.
+*/
 func LoadFromFileIterator() (core.ShiftIterator, []error) {
 	returnVal := shiftSplatnetIterator{}
 	var errs []error
