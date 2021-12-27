@@ -1,0 +1,7 @@
+shifts
+config.json
+statink_shifts
+salmonstats_shifts
+dist/
+shifts.jl.gz
+records.json

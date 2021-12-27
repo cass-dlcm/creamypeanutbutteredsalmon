@@ -1,0 +1,19 @@
+{
+  "cookie": "",
+  "salmonstats_servers": [
+    {
+      "address": "https://salmon-stats-api.yuki.games/api/",
+      "short_name": "official"
+    }
+  ],
+  "session_token": "",
+  "statink_servers": [
+    {
+      "address": "https://stat.ink/api/v2/",
+      "api_key": "",
+      "short_name": "official"
+    }
+  ],
+  "user_id": "",
+  "user_lang": "en-US"
+}
