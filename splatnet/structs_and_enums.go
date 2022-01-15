@@ -77,7 +77,7 @@ type shiftList struct {
 
 type shiftSplatnetResults []shiftSplatnet
 
-func (ssr *shiftSplatnetResults) inList(s shiftSplatnet) bool {
+func (ssr *shiftSplatnetResults) inList(s *shiftSplatnet) bool {
 	for i := range *ssr {
 		if (*ssr)[i].Equals(s) {
 			return true
@@ -86,7 +86,7 @@ func (ssr *shiftSplatnetResults) inList(s shiftSplatnet) bool {
 	return false
 }
 
-func (s *shiftSplatnet) Equals(s2 shiftSplatnet) bool {
+func (s *shiftSplatnet) Equals(s2 *shiftSplatnet) bool {
 	return s.PlayTime == s2.PlayTime
 }
 
@@ -341,7 +341,7 @@ func (s *shiftSplatnetIterator) Next() (shift core.Shift, errs []error) {
 	return nil, errs
 }
 
-func (s *shiftSplatnetIterator) GetAddress() string {
+func (_ *shiftSplatnetIterator) GetAddress() string {
 	return ""
 }
 

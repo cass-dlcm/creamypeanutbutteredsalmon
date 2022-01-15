@@ -291,7 +291,7 @@ func GetAllShifts(sessionToken, cookie, locale string, client *http.Client, quie
 	}
 
 	for i := range data.Results {
-		if data.Results.inList(*shift) {
+		if data.Results.inList(shift) {
 			break
 		}
 		fileText, err := json.Marshal(data.Results[i])

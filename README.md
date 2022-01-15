@@ -3,6 +3,7 @@ Creamy Peanut Buttered Salmon
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/cass-dlcm/creamypeanutbutteredsalmon.svg)](https://pkg.go.dev/github.com/cass-dlcm/peanutbutteredsalmon)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cass-dlcm/creamypeanutbutteredsalmon)](https://goreportcard.com/report/github.com/cass-dlcm/creamypeanutbutteredsalmon)
+[![DeepSource](https://deepsource.io/gh/cass-dlcm/creamypeanutbutteredsalmon.svg/?label=active+issues&show_trend=true&token=sUeiypSGmfk2eicGTR18wXkW)](https://deepsource.io/gh/cass-dlcm/creamypeanutbutteredsalmon/?ref=repository-badge)
 
 Creamy Peanut Buttered Salmon is a program that downloads data from the SplatNet 2 app ("Nintendo Switch Online") or stat.ink to find personal bests in the *Splatoon 2* Salmon Run game mode.
 

@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 )
 
@@ -22,7 +23,11 @@ func setLanguage() {
 	var locale string
 	// Taking input from user
 	if _, err := fmt.Scanln(&locale); err != nil {
-		log.Panic(err)
+		errs = append(errs, err)
+		buf := make([]byte, 1<<16)
+		stackSize := runtime.Stack(buf, false)
+		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		return errs
 	}
 	languageList := map[string]string{
 		"en-US": "en-US",
@@ -254,7 +259,7 @@ func main() {
 		log.Panicln(errs)
 	}
 	if outFile != "" {
-		f, err := os.OpenFile("records.json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		f, err := os.OpenFile("records.json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
 			log.Panicln(err)
 		}

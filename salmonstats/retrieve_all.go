@@ -318,8 +318,9 @@ func (s *shiftSalmonStatsIterator) Next() (shift core.Shift, errs []error) {
 /*
 LoadFromFileIterator creates a core.ShiftIterator that iterates over the salmon-stats/api jsonlimnes in the file.
 */
-func LoadFromFileIterator(server types.Server) (iter *shiftSalmonStatsIterator, errs []error) {
-	iter = &shiftSalmonStatsIterator{serverAddr: server.Address}
+func LoadFromFileIterator(server types.Server) (core.ShiftIterator, []error) {
+	errs := []error{}
+	iter := &shiftSalmonStatsIterator{serverAddr: server.Address}
 	var err error
 	iter.f, err = os.Open(fmt.Sprintf("salmonstats_shifts/%s.jl.gz", server.ShortName))
 	if err != nil {

@@ -209,9 +209,9 @@ func GetAllShifts(statInkServer types.Server, client *http.Client, quiet bool) (
 		}
 		return errs
 	}
-	for true {
+	for {
 		tempData, errs2 := getShift(id)
-		if errs2 != nil && len(errs2) > 0 {
+		if len(errs2) > 0 {
 			errs = append(errs, errs2...)
 			return errs
 		}
@@ -239,7 +239,6 @@ func GetAllShifts(statInkServer types.Server, client *http.Client, quiet bool) (
 		}
 		id = tempData[len(tempData)-1].ID
 	}
-	return nil
 }
 
 type shiftStatInkIterator struct {
@@ -308,6 +307,6 @@ func (s *shiftStatInkIterator) GetAddress() string {
 	return s.serverAddr
 }
 
-func (s shiftStatInk) GetClearWave() int {
+func (s *shiftStatInk) GetClearWave() int {
 	return *s.ClearWaves
 }
