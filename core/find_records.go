@@ -139,7 +139,8 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 					}
 					continue
 				}
-				eventStr, errs2 := (*waveEvents)[l].String()
+				var eventStr string
+				eventStr, errs2 = (*waveEvents)[l].String()
 				if len(errs2) > 0 {
 					errs = append(errs, errs2...)
 					return nil, errs
