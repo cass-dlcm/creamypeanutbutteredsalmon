@@ -8,7 +8,7 @@ Creamy Peanut Buttered Salmon is a program that downloads data from the SplatNet
 
 ## Usage
 
-If running using a Go install
+If running from source
 
 ```Shell
 $ go run cmd/creamyPeanutButteredSalmon.go [-stage ""] [-event ""] [-tide ""] [-weapon ""] [-splatnet] [-statink ""] [-salmonstats ""] [-outfile ""]
@@ -47,8 +47,8 @@ Running `go run cmd/creamyPeanutButteredSalmon.go --statink "official"` finds al
 Finds personal bests for the following records
 
 - [x] Total Golden Eggs
-- [x] Total Golden Eggs <= 2 Nights
-- [x] Total Golden Eggs <= 1 Nights
+- [x] Total Golden Eggs 2 Nights
+- [x] Total Golden Eggs 1 Nights
 - [x] Total Golden Eggs No Night
 - [x] All valid combinations of events and tides
 
