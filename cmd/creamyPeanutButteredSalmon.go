@@ -17,7 +17,8 @@ import (
 	"strings"
 )
 
-func setLanguage() {
+func setLanguage() []error {
+	errs := []error{}
 	log.Println("Please enter your locale (see readme for list).")
 
 	var locale string
@@ -47,7 +48,11 @@ func setLanguage() {
 		log.Println("Invalid language code. Please try entering it again.")
 
 		if _, err := fmt.Scanln(&locale); err != nil {
-			log.Panicln(err)
+			errs = append(errs, err)
+			buf := make([]byte, 1<<16)
+			stackSize := runtime.Stack(buf, false)
+			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			return errs
 		}
 
 		_, exists = languageList[locale]
@@ -55,11 +60,17 @@ func setLanguage() {
 	viper.Set("user_lang", locale)
 
 	if err := viper.WriteConfig(); err != nil {
-		log.Panicln(err)
+		errs = append(errs, err)
+		buf := make([]byte, 1<<16)
+		stackSize := runtime.Stack(buf, false)
+		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		return errs
 	}
+	return nil
 }
 
-func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []types.Server, bool, []types.Server, string) {
+func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []types.Server, bool, []types.Server, string, []error) {
+	errs := []error{}
 	stagesStr := flag.String("stage", "spawning_grounds marooners_bay lost_outpost salmonid_smokeyard ruins_of_ark_polaris", "To set a specific set of stages.")
 	hasEventsStr := flag.String("event", "water_levels rush fog goldie_seeking griller cohock_charge mothership", "To set a specific set of events.")
 	hasTides := flag.String("tide", "LT NT HT", "To set a specific set of tides.")
@@ -86,16 +97,24 @@ func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSched
 		case "ruins_of_ark_polaris":
 			stageRes = types.RuinsOfArkPolaris
 		default:
-			log.Panicf("stage not found: %s\n", stagesStrArr[i])
+			errs = append(errs, fmt.Errorf("stage not found: %s\n", stagesStrArr[i]))
+			buf := make([]byte, 1<<16)
+			stackSize := runtime.Stack(buf, false)
+			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			return nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 		stages = append(stages, stageRes)
 	}
 	hasEvents := []types.Event{}
 	eventsStrArr := strings.Split(*hasEventsStr, " ")
 	for i := range eventsStrArr {
-		eventRes, err := types.StringToEvent(eventsStrArr[i])
-		if err != nil {
-			log.Panicln(err)
+		eventRes, errs2 := types.StringToEvent(eventsStrArr[i])
+		if errs2 != nil {
+			errs = append(errs, errs2...)
+			buf := make([]byte, 1<<16)
+			stackSize := runtime.Stack(buf, false)
+			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			return nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 		hasEvents = append(hasEvents, *eventRes)
 	}
@@ -107,7 +126,11 @@ func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSched
 		case string(types.RandommGrizzco), string(types.SingleRandom), string(types.FourRandom), string(types.Set):
 			weaponVal = types.WeaponSchedule(weaponsStrArr[i])
 		default:
-			log.Panicf("weapon not found: %s\n", weaponsStrArr[i])
+			errs = append(errs, fmt.Errorf("weapon not found: %s\n", weaponsStrArr[i]))
+			buf := make([]byte, 1<<16)
+			stackSize := runtime.Stack(buf, false)
+			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			return nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 		weapons = append(weapons, weaponVal)
 	}
@@ -120,14 +143,22 @@ func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSched
 		case types.Ht, types.Lt, types.Nt:
 			tides = append(tides, inTide)
 		default:
-			log.Panicf("tide not found: %s\n", tidesStrArr[i])
+			errs = append(errs, fmt.Errorf("tide not found: %s\n", tidesStrArr[i]))
+			buf := make([]byte, 1<<16)
+			stackSize := runtime.Stack(buf, false)
+			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			return nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 	}
 
 	statInkURLNicks := strings.Split(*statInk, " ")
 	var statInkURLConf []types.Server
 	if err := viper.UnmarshalKey("statink_servers", &statInkURLConf); err != nil {
-		log.Panicln(err)
+		errs = append(errs, err)
+		buf := make([]byte, 1<<16)
+		stackSize := runtime.Stack(buf, false)
+		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		return nil, nil, nil, nil, nil, false, nil, "", errs
 	}
 	statInkServers := []types.Server{}
 	for i := range statInkURLNicks {
@@ -141,7 +172,11 @@ func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSched
 	salmonStatsURLNicks := strings.Split(*salmonStats, " ")
 	var salmonStatsURLConf []types.Server
 	if err := viper.UnmarshalKey("salmonstats_servers", &salmonStatsURLConf); err != nil {
-		log.Panicln(err)
+		errs = append(errs, err)
+		buf := make([]byte, 1<<16)
+		stackSize := runtime.Stack(buf, false)
+		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		return nil, nil, nil, nil, nil, false, nil, "", errs
 	}
 	salmonStatsServers := []types.Server{}
 	for i := range salmonStatsURLNicks {
@@ -152,7 +187,7 @@ func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSched
 		}
 	}
 
-	return stages, hasEvents, tides, weapons, statInkServers, *useSplatnet, salmonStatsServers, *outFile
+	return stages, hasEvents, tides, weapons, statInkServers, *useSplatnet, salmonStatsServers, *outFile, nil
 }
 
 func main() {
@@ -202,12 +237,12 @@ func main() {
 			return http.ErrUseLastResponse
 		},
 	}
-	stages, hasEvents, tides, weapons, statInkServers, useSplatnet, salmonStatsServers, outFile := getFlags()
+	stages, hasEvents, tides, weapons, statInkServers, useSplatnet, salmonStatsServers, outFile, errs := getFlags()
+	if len(errs) > 0 {
+		log.Panicln(errs)
+	}
 	if errs := types.CheckForUpdate(client, outFile == ""); len(errs) > 0 {
-		for i := range errs {
-			log.Println(errs[i])
-		}
-		log.Panicln(nil)
+		log.Panicln(errs)
 	}
 	if !(viper.IsSet("user_lang")) || viper.GetString("user_lang") == "" {
 		setLanguage()
