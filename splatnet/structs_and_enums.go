@@ -341,7 +341,7 @@ func (s *shiftSplatnetIterator) Next() (shift core.Shift, errs []error) {
 	return nil, errs
 }
 
-func (_ *shiftSplatnetIterator) GetAddress() string {
+func (*shiftSplatnetIterator) GetAddress() string {
 	return ""
 }
 
