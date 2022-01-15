@@ -233,7 +233,7 @@ func (s shiftSalmonStats) GetTime() (time.Time, []error) {
 		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
 		return time.Time{}, errs
 	}
-	return startTime, nil
+	return startTime.Local(), nil
 }
 
 func (s shiftSalmonStats) GetIdentifier(server string) string {

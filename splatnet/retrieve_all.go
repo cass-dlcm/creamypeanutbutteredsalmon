@@ -20,7 +20,7 @@ import (
 /*
 GetAllShifts downloads every shiftSplatnet from the SplatNet server and saves it to a gzipped jsonlines file.
 */
-func GetAllShifts(sessionToken, cookie, locale string, client *http.Client) (*string, *string, []error) {
+func GetAllShifts(sessionToken, cookie, locale string, client *http.Client, quiet bool) (*string, *string, []error) {
 	var errs []error
 	_, timezone := time.Now().Zone()
 	timezone = -timezone / 60
@@ -36,7 +36,9 @@ func GetAllShifts(sessionToken, cookie, locale string, client *http.Client) (*st
 		"Accept-Language":   []string{locale},
 	}
 
-	log.Println("Pulling Salmon Run data from online...")
+	if !quiet {
+		log.Println("Pulling Salmon Run data from online...")
+	}
 
 	url := "https://app.splatoon2.nintendo.net/api/coop_results"
 
@@ -202,7 +204,7 @@ func GetAllShifts(sessionToken, cookie, locale string, client *http.Client) (*st
 		if len(errs) > 0 {
 			return &sessionToken, &cookie, errs
 		}
-		newSessionToken, newCookie, errsRec := GetAllShifts(sessionToken, cookie, locale, client)
+		newSessionToken, newCookie, errsRec := GetAllShifts(sessionToken, cookie, locale, client, quiet)
 		if len(errsRec) > 0 {
 			errs = append(errs, errsRec...)
 			return &sessionToken, &cookie, errs
@@ -232,7 +234,7 @@ func GetAllShifts(sessionToken, cookie, locale string, client *http.Client) (*st
 		if len(errs) > 0 {
 			return &sessionToken, &cookie, errs
 		}
-		newSessionToken, newCookie, errsRec := GetAllShifts(sessionToken, cookie, locale, client)
+		newSessionToken, newCookie, errsRec := GetAllShifts(sessionToken, cookie, locale, client, quiet)
 		if len(errsRec) > 0 {
 			errs = append(errs, errsRec...)
 			return &sessionToken, &cookie, errs

@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var currVersion = version{0, 1, 2}
+var currVersion = version{0, 2, 0}
 
 type version struct {
 	Major  uint64
@@ -123,7 +123,7 @@ CheckForUpdate downloads the latest version of this file and checks to see which
 If the downloaded version is higher, execution ends.
 If the binary version is higher, it warns about being a prerelease.
 */
-func CheckForUpdate(client *http.Client) (errs []error) {
+func CheckForUpdate(client *http.Client, quiet bool) (errs []error) {
 	url := "https://api.github.com/repos/cass-dlcm/creamypeanutbutteredsalmon/releases"
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -174,8 +174,9 @@ func CheckForUpdate(client *http.Client) (errs []error) {
 	testVers := version{major, minor, bugfix}
 	versionComparison := currVersion.compareVersion(&testVers)
 	if versionComparison == 1 {
-		log.Panicf("A new version is available. Please update to the new version.\nCurrent Version: %s\nNew Version: %s\nExiting.", currVersion.toString(), testVers.toString())
-	} else if versionComparison == -1 {
+		errs = append(errs, fmt.Errorf("A new version is available. Please update to the new version.\nCurrent Version: %s\nNew Version: %s\nExiting.", currVersion.toString(), testVers.toString()))
+		return errs
+	} else if versionComparison == -1 && !quiet {
 		log.Printf("You are running a unreleased version.\nLatest released version:%s\nCurrent version:%s\n", testVers.toString(), currVersion.toString())
 	}
 	return errs

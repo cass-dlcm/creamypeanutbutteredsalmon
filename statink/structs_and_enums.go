@@ -233,7 +233,7 @@ func (s *shiftStatInk) GetWaveCount() int {
 }
 
 func (s *shiftStatInk) GetTime() (time.Time, []error) {
-	return s.StartAt.Iso8601, nil
+	return s.StartAt.Iso8601.Local(), nil
 }
 
 func (s *shiftStatInk) GetIdentifier(server string) string {

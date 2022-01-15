@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core"
@@ -53,7 +54,7 @@ func setLanguage() {
 	}
 }
 
-func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []types.Server, bool, []types.Server) {
+func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []types.Server, bool, []types.Server, string) {
 	stagesStr := flag.String("stage", "spawning_grounds marooners_bay lost_outpost salmonid_smokeyard ruins_of_ark_polaris", "To set a specific set of stages.")
 	hasEventsStr := flag.String("event", "water_levels rush fog goldie_seeking griller cohock_charge mothership", "To set a specific set of events.")
 	hasTides := flag.String("tide", "LT NT HT", "To set a specific set of tides.")
@@ -61,6 +62,7 @@ func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSched
 	statInk := flag.String("statink", "", "To read data from stat.ink. Use \"official\" for the server at stat.ink.")
 	useSplatnet := flag.Bool("splatnet", false, "To read data from splatnet.")
 	salmonStats := flag.String("salmonstats", "", "To read data from salmon-stats. Use \"official\" for the server at salmon-stats-api.yuki.games")
+	outFile := flag.String("outfile", "", "To output data to a JSON file.")
 	flag.Parse()
 
 	stages := []types.Stage{}
@@ -145,7 +147,7 @@ func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSched
 		}
 	}
 
-	return stages, hasEvents, tides, weapons, statInkServers, *useSplatnet, salmonStatsServers
+	return stages, hasEvents, tides, weapons, statInkServers, *useSplatnet, salmonStatsServers, *outFile
 }
 
 func main() {
@@ -195,7 +197,8 @@ func main() {
 			return http.ErrUseLastResponse
 		},
 	}
-	if errs := types.CheckForUpdate(client); len(errs) > 0 {
+	stages, hasEvents, tides, weapons, statInkServers, useSplatnet, salmonStatsServers, outFile := getFlags()
+	if errs := types.CheckForUpdate(client, outFile == ""); len(errs) > 0 {
 		for i := range errs {
 			log.Println(errs[i])
 		}
@@ -204,10 +207,11 @@ func main() {
 	if !(viper.IsSet("user_lang")) || viper.GetString("user_lang") == "" {
 		setLanguage()
 	}
-	stages, hasEvents, tides, weapons, statInkServers, useSplatnet, salmonStatsServers := getFlags()
 	iterators := []core.ShiftIterator{}
 	if useSplatnet {
-		sessionToken, cookie, errs := splatnet.GetAllShifts(viper.GetString("session_token"), viper.GetString("cookie"), viper.GetString("user_lang"), client)
+		var sessionToken, cookie *string
+		var errs []error
+		sessionToken, cookie, errs = splatnet.GetAllShifts(viper.GetString("session_token"), viper.GetString("cookie"), viper.GetString("user_lang"), client, outFile == "")
 		if errs != nil {
 			for err := range errs {
 				log.Println(errs[err])
@@ -226,8 +230,7 @@ func main() {
 		iterators = append(iterators, iter)
 	}
 	for i := range salmonStatsServers {
-		errs := salmonstats.GetAllShifts(salmonStatsServers[i], client)
-		if len(errs) > 0 {
+		if errs := salmonstats.GetAllShifts(salmonStatsServers[i], client, outFile == ""); len(errs) > 0 {
 			log.Panicln(errs)
 		}
 		iter, errs := salmonstats.LoadFromFileIterator(salmonStatsServers[i])
@@ -237,8 +240,7 @@ func main() {
 		iterators = append(iterators, iter)
 	}
 	for i := range statInkServers {
-		errs := statink.GetAllShifts(statInkServers[i], client)
-		if errs != nil {
+		if errs := statink.GetAllShifts(statInkServers[i], client, outFile == ""); errs != nil {
 			log.Panicln(errs)
 		}
 		iter, errs := statink.LoadFromFileIterator(statInkServers[i])
@@ -247,11 +249,23 @@ func main() {
 		}
 		iterators = append(iterators, iter)
 	}
-	f, err := os.OpenFile("records.json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Panicln(err)
-	}
-	if errs := core.FindRecords(iterators, stages, hasEvents, tides, weapons, client, f); errs != nil {
+	records, errs := core.FindRecords(iterators, stages, hasEvents, tides, weapons, client)
+	if errs != nil {
 		log.Panicln(errs)
+	}
+	if outFile != "" {
+		f, err := os.OpenFile("records.json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			log.Panicln(err)
+		}
+		encoder := json.NewEncoder(f)
+		encoder.SetIndent("", "    ")
+		if err := encoder.Encode(records); err != nil {
+			log.Panicln(err)
+		}
+		return
+	}
+	if err := json.NewEncoder(os.Stdout).Encode(records); err != nil {
+		log.Panicln(err)
 	}
 }

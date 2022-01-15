@@ -2,6 +2,7 @@ Creamy Peanut Buttered Salmon
 ================
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/cass-dlcm/creamypeanutbutteredsalmon.svg)](https://pkg.go.dev/github.com/cass-dlcm/peanutbutteredsalmon)
+[![Go Report Card](https://goreportcard.com/badge/github.com/cass-dlcm/creamypeanutbutteredsalmon)](https://goreportcard.com/report/github.com/cass-dlcm/creamypeanutbutteredsalmon)
 
 Creamy Peanut Buttered Salmon is a program that downloads data from the SplatNet 2 app ("Nintendo Switch Online") or stat.ink to find personal bests in the *Splatoon 2* Salmon Run game mode.
 
@@ -10,13 +11,13 @@ Creamy Peanut Buttered Salmon is a program that downloads data from the SplatNet
 If running using a Go install
 
 ```Shell
-$ go run main.go [-stage ""] [-event ""] [-tide ""] [-weapon ""] [-splatnet] [-statink ""] [-salmonstats ""]
+$ go run cmd/creamyPeanutButteredSalmon.go [-stage ""] [-event ""] [-tide ""] [-weapon ""] [-splatnet] [-statink ""] [-salmonstats ""] [-outfile ""]
 ```
 
 If running a binary
 
 ```Shell
-$ ./creamyPeanutButteredSalmon [-stage ""] [-event ""] [-tide ""] [-weapon ""] [-splatnet] [-statink ""] [-salmonstats ""]
+$ ./creamyPeanutButteredSalmon [-stage ""] [-event ""] [-tide ""] [-weapon ""] [-splatnet] [-statink ""] [-salmonstats ""] [-outfile ""]
 ```
 
 The `-stage` flag takes in a string with the set of stages to include like such: `"spawning_grounds marooners_bay lost_outpost salmonid_smokeyard ruins_of_ark_polaris"`
@@ -27,21 +28,19 @@ The `-tide` flag takes in a string with the set of tides to include like such: `
 
 The `-weapon` flag takes in a string with the set of weapon types to include like such: `"set single_random four_random random_gold"`
 
-The `-save` flag saves the downloaded data to a folder called `shifts`, `statink_shifts/{server}`, or `salmonstats/{server}` in the current working directory.
-
-The `-load` flag loads the data from a folder called `shifts`, `statink_shifts/{server}`, or `salmonstats/{server}` in the current working directory.
-
 The `-splatnet` flag signals to download data from SplatNet 2.
 
 The `-statink` flag signals to download data from a stat.ink instance. Use `-statink "official"` to use the https://stat.ink instance.
 
 The `-salmonstats` flag downloads data from a salmon-stats instance. Use `-salmonstats "official"` to use the https://salmon-stats-api.yuki.games instance.
 
+The `-outfile` flag specifies to write the JSON output to a file, and enables progress information to standard out.
+
 ### Example usage
 
-Running `go run main.go -save -splatnet` from the command line launches the program to check on Splatnet 2 for new results, save them, and finding personal bests.
+Running `go run cmd/creamyPeanutButteredSalmon.go -splatnet` from the command line launches the program to check on Splatnet 2 for new results, save them, and find personal bests.
 
-Running `go run main.go --statink "official"` finds all personal bests from your data on stat.ink
+Running `go run cmd/creamyPeanutButteredSalmon.go --statink "official"` finds all personal bests from your data on stat.ink.
 
 ## Features
 

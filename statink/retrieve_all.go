@@ -20,7 +20,7 @@ import (
 /*
 GetAllShifts downloads every shiftStatInk from the provided stat.ink server and saves it to a gzipped jsonlines file.
 */
-func GetAllShifts(statInkServer types.Server, client *http.Client) (errs []error) {
+func GetAllShifts(statInkServer types.Server, client *http.Client, quiet bool) (errs []error) {
 	var jsonLinesWriter *gzip.Writer
 	file, err := os.Create(fmt.Sprintf("statink_shifts/%s_out.jl.gz", statInkServer.ShortName))
 	if err != nil {
@@ -43,7 +43,9 @@ func GetAllShifts(statInkServer types.Server, client *http.Client) (errs []error
 		query.Set("newer_than", fmt.Sprint(id))
 		query.Set("order", "asc")
 		req.URL.RawQuery = query.Encode()
-		log.Println(req.URL)
+		if !quiet {
+			log.Println(req.URL)
+		}
 		resp, err := client.Do(req)
 		if err != nil {
 			errs = append(errs, err)

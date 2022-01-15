@@ -21,8 +21,10 @@ import (
 /*
 GetAllShifts downloads every shiftSalmonStats from the provided salmon-stats/api server and saves it to a gzipped jsonlines file.
 */
-func GetAllShifts(server types.Server, client *http.Client) (errs []error) {
-	log.Println("Pulling Salmon Run data from online...")
+func GetAllShifts(server types.Server, client *http.Client, quiet bool) (errs []error) {
+	if !quiet {
+		log.Println("Pulling Salmon Run data from online...")
+	}
 	var jsonLinesWriter *gzip.Writer
 	file, err := os.Create(fmt.Sprintf("salmonstats_shifts/%s_out.jl.gz", server.ShortName))
 	if err != nil {
@@ -31,7 +33,7 @@ func GetAllShifts(server types.Server, client *http.Client) (errs []error) {
 	jsonLinesWriter = gzip.NewWriter(file)
 	getShifts := func(page int) (found bool, errs []error) {
 		url := fmt.Sprintf("%splayers/%s/results", server.Address, viper.GetString("user_id"))
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
@@ -47,7 +49,9 @@ func GetAllShifts(server types.Server, client *http.Client) (errs []error) {
 		query.Set("page", fmt.Sprint(page))
 		req.URL.RawQuery = query.Encode()
 
-		log.Println(req.URL)
+		if !quiet {
+			log.Println(req.URL)
+		}
 
 		resp, err := client.Do(req)
 		if err != nil {

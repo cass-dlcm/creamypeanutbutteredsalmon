@@ -138,5 +138,5 @@ func (s *shiftSplatnet) GetWaveCount() int {
 }
 
 func (s *shiftSplatnet) GetTime() (time.Time, []error) {
-	return time.Unix(s.PlayTime, 0).UTC(), nil
+	return time.Unix(s.PlayTime, 0).Local(), nil
 }

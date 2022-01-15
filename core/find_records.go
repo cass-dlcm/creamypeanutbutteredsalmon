@@ -1,10 +1,10 @@
 package core
 
 import (
-	"encoding/json"
+	"errors"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core/types"
-	"io"
 	"net/http"
+	"time"
 )
 
 func filterStages(stages []types.Stage, data Shift, schedules types.Schedule) (Shift, []error) {
@@ -54,12 +54,12 @@ func filterWeapons(weapons []types.WeaponSchedule, data Shift, schedules types.S
 /*
 FindRecords uses the given iterators to pull the shift data from the various sources based on the parameters, and finds records based on the set filters.
 */
-func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents types.EventArr, tides types.TideArr, weapons []types.WeaponSchedule, client *http.Client, output io.Writer) []error {
+func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents types.EventArr, tides types.TideArr, weapons []types.WeaponSchedule, client *http.Client) (map[recordName]*map[string]*map[types.WeaponSchedule]*record, []error) {
 	var errs []error
 	scheduleList, errs2 := types.GetSchedules(client)
 	if errs2 != nil {
 		errs = append(errs, errs2...)
-		return errs
+		return nil, errs
 	}
 	records := getAllRecords()
 	for i := range iterators {
@@ -72,7 +72,7 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 			shift, errs2 = filterStages(stages, shift, scheduleList)
 			if errs2 != nil {
 				errs = append(errs, errs2...)
-				return errs
+				return nil, errs
 			}
 			if shift == nil {
 				shift, errs2 = iterators[i].Next()
@@ -81,7 +81,7 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 			shift, errs2 = filterEvents(hasEvents, shift)
 			if len(errs2) > 0 {
 				errs = append(errs, errs2...)
-				return errs
+				return nil, errs
 			}
 			if shift == nil {
 				shift, errs2 = iterators[i].Next()
@@ -90,7 +90,7 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 			shift, errs2 = filterTides(tides, shift)
 			if errs2 != nil {
 				errs = append(errs, errs2...)
-				return errs
+				return nil, errs
 			}
 			if shift == nil {
 				shift, errs2 = iterators[i].Next()
@@ -99,7 +99,7 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 			shift, errs2 = filterWeapons(weapons, shift, scheduleList)
 			if len(errs2) > 0 {
 				errs = append(errs, errs2...)
-				return errs
+				return nil, errs
 			}
 			if shift == nil {
 				shift, errs2 = iterators[i].Next()
@@ -114,10 +114,11 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 			waveEvents, _ := shift.GetEvents()
 			waveWaterLevel, _ := shift.GetTides()
 			clearWaves := shift.GetClearWave()
-			shiftTime, errs2 := shift.GetTime()
+			var shiftTime time.Time
+			shiftTime, errs2 = shift.GetTime()
 			if errs2 != nil {
 				errs = append(errs, errs2...)
-				return errs
+				return nil, errs
 			}
 			for l := 0; l < waveCount && i < clearWaves; l++ {
 				if (*waveEvents)[l] == types.WaterLevels && hasEvents.HasElement(types.WaterLevels) {
@@ -141,7 +142,7 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 				eventStr, errs2 := (*waveEvents)[l].String()
 				if len(errs2) > 0 {
 					errs = append(errs, errs2...)
-					return errs
+					return nil, errs
 				}
 				if hasEvents.HasElement((*waveEvents)[l]) &&
 					tides.HasElement((*waveWaterLevel)[l]) {
@@ -234,15 +235,12 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 			shift, errs2 = iterators[i].Next()
 		}
 		if len(errs2) > 0 {
+			if errors.Is(errs2[0], &NoMoreShiftsError{}) {
+				continue
+			}
 			errs = append(errs, errs2...)
-			return errs
+			return nil, errs
 		}
 	}
-	encoder := json.NewEncoder(output)
-	encoder.SetIndent("", "\t")
-	if err := encoder.Encode(records); err != nil {
-		errs = append(errs, err)
-		return errs
-	}
-	return nil
+	return records, nil
 }
