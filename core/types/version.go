@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var currVersion = version{0, 3, 0}
+var currVersion = version{0, 4, 0}
 
 type version struct {
 	Major  uint64

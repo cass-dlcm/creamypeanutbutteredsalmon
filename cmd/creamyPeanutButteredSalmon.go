@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core"
@@ -9,7 +10,7 @@ import (
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/salmonstats"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/splatnet"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/statink"
-	"github.com/spf13/viper"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -17,7 +18,7 @@ import (
 	"strings"
 )
 
-func setLanguage() []error {
+func setLanguage() (string, []error) {
 	errs := []error{}
 	log.Println("Please enter your locale (see readme for list).")
 
@@ -28,7 +29,7 @@ func setLanguage() []error {
 		buf := make([]byte, 1<<16)
 		stackSize := runtime.Stack(buf, false)
 		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
-		return errs
+		return "", errs
 	}
 	languageList := map[string]string{
 		"en-US": "en-US",
@@ -52,24 +53,15 @@ func setLanguage() []error {
 			buf := make([]byte, 1<<16)
 			stackSize := runtime.Stack(buf, false)
 			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
-			return errs
+			return "", errs
 		}
 
 		_, exists = languageList[locale]
 	}
-	viper.Set("user_lang", locale)
-
-	if err := viper.WriteConfig(); err != nil {
-		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
-		return errs
-	}
-	return nil
+	return locale, nil
 }
 
-func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []types.Server, bool, []types.Server, string, []error) {
+func getFlags(statInkURLConf []types.Server, salmonStatsURLConf []types.Server) ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []types.Server, bool, []types.Server, string, []error) {
 	errs := []error{}
 	stagesStr := flag.String("stage", "spawning_grounds marooners_bay lost_outpost salmonid_smokeyard ruins_of_ark_polaris", "To set a specific set of stages.")
 	hasEventsStr := flag.String("event", "water_levels rush fog goldie_seeking griller cohock_charge mothership", "To set a specific set of events.")
@@ -152,14 +144,6 @@ func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSched
 	}
 
 	statInkURLNicks := strings.Split(*statInk, " ")
-	var statInkURLConf []types.Server
-	if err := viper.UnmarshalKey("statink_servers", &statInkURLConf); err != nil {
-		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
-		return nil, nil, nil, nil, nil, false, nil, "", errs
-	}
 	statInkServers := []types.Server{}
 	for i := range statInkURLNicks {
 		for j := range statInkURLConf {
@@ -170,14 +154,6 @@ func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSched
 	}
 
 	salmonStatsURLNicks := strings.Split(*salmonStats, " ")
-	var salmonStatsURLConf []types.Server
-	if err := viper.UnmarshalKey("salmonstats_servers", &salmonStatsURLConf); err != nil {
-		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
-		return nil, nil, nil, nil, nil, false, nil, "", errs
-	}
 	salmonStatsServers := []types.Server{}
 	for i := range salmonStatsURLNicks {
 		for j := range salmonStatsURLConf {
@@ -190,87 +166,109 @@ func getFlags() ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSched
 	return stages, hasEvents, tides, weapons, statInkServers, *useSplatnet, salmonStatsServers, *outFile, nil
 }
 
-func main() {
-	viper.SetConfigName("config")
-	viper.AddConfigPath(".")
-	viper.SetConfigType("json")
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// Config file not found; ignore error if desired
-			log.Println("No config file found. One will be created.")
-			viper.Set("cookie", "")
-			viper.Set("session_token", "")
-			viper.Set("user_lang", "")
-			viper.Set("user_id", "")
-			viper.Set("statink_servers", []types.Server{{
+type config struct {
+	Cookie             string         `json:"cookie"`
+	SessionToken       string         `json:"session_token"`
+	UserLang           string         `json:"user_lang"`
+	UserId             string         `json:"user_id"`
+	StatinkServers     []types.Server `json:"statink_servers"`
+	SalmonstatsServers []types.Server `json:"salmonstats_servers"`
+}
+
+func newConfig() config {
+	return config{
+		StatinkServers: []types.Server{
+			{
 				ShortName: "official",
 				APIKey:    "",
 				Address:   "https://stat.ink/api/v2/",
-			}})
-			viper.Set("salmonstats_servers", []types.Server{{
+			},
+		},
+		SalmonstatsServers: []types.Server{
+			{
 				ShortName: "official",
 				Address:   "https://salmon-stats-api.yuki.games/api/",
-			}})
-			if err := viper.WriteConfigAs("./config.json"); err != nil {
-				log.Panicln(err)
-			}
-		} else {
-			// Config file was found but another error was produced
-			log.Panicf("Error reading the config file. Error is %v\n", err)
+			},
+		},
+	}
+}
+
+func main() {
+	configFile, err := os.Open("config.json")
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Panicln(err)
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		configValues := newConfig()
+		configJson, err := json.Marshal(configValues)
+		if err != nil {
+			log.Panicln(err)
+		}
+		if err := os.WriteFile("config.json", configJson, 0600); err != nil {
+			log.Panicln(err)
 		}
 	}
-	viper.SetDefault("cookie", "")
-	viper.SetDefault("session_token", "")
-	viper.SetDefault("user_lang", "")
-	viper.SetDefault("user_id", "")
-	viper.SetDefault("statink_servers", []types.Server{{
-		ShortName: "official",
-		APIKey:    "",
-		Address:   "https://stat.ink/api/v2/",
-	}})
-	viper.SetDefault("salmonstats_servers", []types.Server{{
-		ShortName: "official",
-		Address:   "https://salmon-stats-api.yuki.games/api/",
-	}})
+	configJson, err := ioutil.ReadAll(configFile)
+	if err != nil {
+		if err := configFile.Close(); err != nil {
+			log.Println(err)
+		}
+		log.Panicln(err)
+	}
+	if err := configFile.Close(); err != nil {
+		log.Panicln(err)
+	}
+	var configValues config
+	if err := json.Unmarshal(configJson, &configValues); err != nil {
+		log.Panicln(err)
+	}
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
-	stages, hasEvents, tides, weapons, statInkServers, useSplatnet, salmonStatsServers, outFile, errs := getFlags()
+	stages, hasEvents, tides, weapons, statInkServers, useSplatnet, salmonStatsServers, outFile, errs := getFlags(configValues.StatinkServers, configValues.SalmonstatsServers)
 	if len(errs) > 0 {
 		log.Panicln(errs)
 	}
 	if errs := types.CheckForUpdate(client, outFile == ""); len(errs) > 0 {
 		log.Panicln(errs)
 	}
-	if !(viper.IsSet("user_lang")) || viper.GetString("user_lang") == "" {
-		setLanguage()
+	if configValues.UserLang == "" {
+		configValues.UserLang, errs = setLanguage()
+		if errs != nil {
+			log.Panicln(errs)
+		}
+		configJson, err = json.Marshal(configValues)
+		if err != nil {
+			log.Panicln(err)
+		}
+		if err := os.WriteFile("config.json", configJson, 0600); err != nil {
+			log.Panicln(err)
+		}
 	}
 	iterators := []core.ShiftIterator{}
 	if useSplatnet {
-		var sessionToken, cookie *string
-		var errs []error
-		sessionToken, cookie, errs = splatnet.GetAllShifts(viper.GetString("session_token"), viper.GetString("cookie"), viper.GetString("user_lang"), client, outFile == "")
+		sessionToken, cookie, userID, errs := splatnet.GetAllShifts(configValues.SessionToken, configValues.Cookie, configValues.UserLang, configValues.UserId, client, outFile == "")
 		if errs != nil {
-			for err := range errs {
-				log.Println(errs[err])
-			}
-			log.Panicln(nil)
+			log.Panicln(errs)
 		}
-		viper.Set("session_token", sessionToken)
-		viper.Set("cookie", cookie)
-		if err := viper.WriteConfig(); err != nil {
-			log.Panicln(err)
-		}
-		iter, err := splatnet.LoadFromFileIterator()
+		configValues.SessionToken, configValues.Cookie, configValues.UserId = *sessionToken, *cookie, *userID
+		configJson, err = json.Marshal(configValues)
 		if err != nil {
 			log.Panicln(err)
+		}
+		if err := os.WriteFile("config.json", configJson, 0600); err != nil {
+			log.Panicln(err)
+		}
+		iter, errs := splatnet.LoadFromFileIterator()
+		if errs != nil {
+			log.Panicln(errs)
 		}
 		iterators = append(iterators, iter)
 	}
 	for i := range salmonStatsServers {
-		if errs := salmonstats.GetAllShifts(salmonStatsServers[i], client, outFile == ""); len(errs) > 0 {
+		if errs := salmonstats.GetAllShifts(configValues.UserId, salmonStatsServers[i], client, outFile == ""); len(errs) > 0 {
 			log.Panicln(errs)
 		}
 		iter, errs := salmonstats.LoadFromFileIterator(salmonStatsServers[i])

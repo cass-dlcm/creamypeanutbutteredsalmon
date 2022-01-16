@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core/types"
-	"github.com/spf13/viper"
 	"io"
 	"log"
 	"net/http"
@@ -21,7 +20,7 @@ import (
 /*
 GetAllShifts downloads every shiftSalmonStats from the provided salmon-stats/api server and saves it to a gzipped jsonlines file.
 */
-func GetAllShifts(server types.Server, client *http.Client, quiet bool) (errs []error) {
+func GetAllShifts(userID string, server types.Server, client *http.Client, quiet bool) (errs []error) {
 	if !quiet {
 		log.Println("Pulling Salmon Run data from online...")
 	}
@@ -32,7 +31,7 @@ func GetAllShifts(server types.Server, client *http.Client, quiet bool) (errs []
 	}
 	jsonLinesWriter = gzip.NewWriter(file)
 	getShifts := func(page int) (found bool, errs []error) {
-		url := fmt.Sprintf("%splayers/%s/results", server.Address, viper.GetString("user_id"))
+		url := fmt.Sprintf("%splayers/%s/results", server.Address, userID)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
