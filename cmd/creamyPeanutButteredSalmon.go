@@ -61,7 +61,7 @@ func setLanguage() (string, []error) {
 	return locale, nil
 }
 
-func getFlags(statInkURLConf []types.Server, salmonStatsURLConf []types.Server) ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []types.Server, bool, []types.Server, string, []error) {
+func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server) ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []*types.Server, bool, []*types.Server, string, []error) {
 	errs := []error{}
 	stagesStr := flag.String("stage", "spawning_grounds marooners_bay lost_outpost salmonid_smokeyard ruins_of_ark_polaris", "To set a specific set of stages.")
 	hasEventsStr := flag.String("event", "water_levels rush fog goldie_seeking griller cohock_charge mothership", "To set a specific set of events.")
@@ -144,7 +144,7 @@ func getFlags(statInkURLConf []types.Server, salmonStatsURLConf []types.Server) 
 	}
 
 	statInkURLNicks := strings.Split(*statInk, " ")
-	statInkServers := []types.Server{}
+	statInkServers := []*types.Server{}
 	for i := range statInkURLNicks {
 		for j := range statInkURLConf {
 			if statInkURLConf[j].ShortName == statInkURLNicks[i] {
@@ -154,7 +154,7 @@ func getFlags(statInkURLConf []types.Server, salmonStatsURLConf []types.Server) 
 	}
 
 	salmonStatsURLNicks := strings.Split(*salmonStats, " ")
-	salmonStatsServers := []types.Server{}
+	salmonStatsServers := []*types.Server{}
 	for i := range salmonStatsURLNicks {
 		for j := range salmonStatsURLConf {
 			if salmonStatsURLConf[j].ShortName == salmonStatsURLNicks[i] {
@@ -167,24 +167,24 @@ func getFlags(statInkURLConf []types.Server, salmonStatsURLConf []types.Server) 
 }
 
 type config struct {
-	Cookie             string         `json:"cookie"`
-	SessionToken       string         `json:"session_token"`
-	UserLang           string         `json:"user_lang"`
-	UserId             string         `json:"user_id"`
-	StatinkServers     []types.Server `json:"statink_servers"`
-	SalmonstatsServers []types.Server `json:"salmonstats_servers"`
+	Cookie             string          `json:"cookie"`
+	SessionToken       string          `json:"session_token"`
+	UserLang           string          `json:"user_lang"`
+	UserId             string          `json:"user_id"`
+	StatinkServers     []*types.Server `json:"statink_servers"`
+	SalmonstatsServers []*types.Server `json:"salmonstats_servers"`
 }
 
 func newConfig() config {
 	return config{
-		StatinkServers: []types.Server{
+		StatinkServers: []*types.Server{
 			{
 				ShortName: "official",
 				APIKey:    "",
 				Address:   "https://stat.ink/api/v2/",
 			},
 		},
-		SalmonstatsServers: []types.Server{
+		SalmonstatsServers: []*types.Server{
 			{
 				ShortName: "official",
 				Address:   "https://salmon-stats-api.yuki.games/api/",
@@ -194,19 +194,23 @@ func newConfig() config {
 }
 
 func main() {
-	configFile, err := os.Open("config.json")
+	_, err := os.Stat("config.json")
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		log.Panicln(err)
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		configValues := newConfig()
-		configJson, err := json.Marshal(configValues)
+		configJson, err := json.MarshalIndent(configValues, "", "    ")
 		if err != nil {
 			log.Panicln(err)
 		}
 		if err := os.WriteFile("config.json", configJson, 0600); err != nil {
 			log.Panicln(err)
 		}
+	}
+	configFile, err := os.Open("config.json")
+	if err != nil {
+		log.Panicln(err)
 	}
 	configJson, err := ioutil.ReadAll(configFile)
 	if err != nil {
@@ -239,7 +243,7 @@ func main() {
 		if errs != nil {
 			log.Panicln(errs)
 		}
-		configJson, err = json.Marshal(configValues)
+		configJson, err = json.MarshalIndent(configValues, "", "    ")
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -254,7 +258,7 @@ func main() {
 			log.Panicln(errs)
 		}
 		configValues.SessionToken, configValues.Cookie, configValues.UserId = *sessionToken, *cookie, *userID
-		configJson, err = json.Marshal(configValues)
+		configJson, err = json.MarshalIndent(configValues, "", "    ")
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -268,10 +272,10 @@ func main() {
 		iterators = append(iterators, iter)
 	}
 	for i := range salmonStatsServers {
-		if errs := salmonstats.GetAllShifts(configValues.UserId, salmonStatsServers[i], client, outFile == ""); len(errs) > 0 {
+		if errs := salmonstats.GetAllShifts(configValues.UserId, *salmonStatsServers[i], client, outFile == ""); len(errs) > 0 {
 			log.Panicln(errs)
 		}
-		iter, errs := salmonstats.LoadFromFileIterator(salmonStatsServers[i])
+		iter, errs := salmonstats.LoadFromFileIterator(*salmonStatsServers[i])
 		if len(errs) > 0 {
 			log.Panicln(errs)
 		}
@@ -281,7 +285,14 @@ func main() {
 		if errs := statink.GetAllShifts(statInkServers[i], client, outFile == ""); errs != nil {
 			log.Panicln(errs)
 		}
-		iter, errs := statink.LoadFromFileIterator(statInkServers[i])
+		configJson, err = json.MarshalIndent(configValues, "", "    ")
+		if err != nil {
+			log.Panicln(err)
+		}
+		if err := os.WriteFile("config.json", configJson, 0600); err != nil {
+			log.Panicln(err)
+		}
+		iter, errs := statink.LoadFromFileIterator(*statInkServers[i])
 		if errs != nil {
 			log.Panicln(errs)
 		}

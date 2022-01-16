@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var currVersion = version{0, 4, 0}
+var currVersion = version{0, 5, 0}
 
 type version struct {
 	Major  uint64
@@ -151,7 +151,7 @@ func CheckForUpdate(client *http.Client, quiet bool) (errs []error) {
 		errs = append(errs, err)
 		return errs
 	}
-	versionStr := releases[len(releases)-1].TagName
+	versionStr := releases[0].TagName
 	versionSubstrs := strings.Split(versionStr, ".")
 	if versionSubstrs[0] == "" {
 		return nil

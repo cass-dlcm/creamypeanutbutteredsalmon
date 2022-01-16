@@ -20,11 +20,26 @@ import (
 /*
 GetAllShifts downloads every shiftStatInk from the provided stat.ink server and saves it to a gzipped jsonlines file.
 */
-func GetAllShifts(statInkServer types.Server, client *http.Client, quiet bool) (errs []error) {
+func GetAllShifts(statInkServer *types.Server, client *http.Client, quiet bool) (errs []error) {
+	if statInkServer.APIKey == "" {
+		for len(statInkServer.APIKey) != 43 {
+			log.Println("Please get your stat.ink API key, paste it here, and press enter: ")
+			if _, err := fmt.Scanln(&statInkServer.APIKey); err != nil {
+				errs = append(errs, err)
+				buf := make([]byte, 1<<16)
+				stackSize := runtime.Stack(buf, false)
+				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+				return errs
+			}
+		}
+	}
 	var jsonLinesWriter *gzip.Writer
 	file, err := os.Create(fmt.Sprintf("statink_shifts/%s_out.jl.gz", statInkServer.ShortName))
 	if err != nil {
 		errs = append(errs, err)
+		buf := make([]byte, 1<<16)
+		stackSize := runtime.Stack(buf, false)
+		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
 		return errs
 	}
 	jsonLinesWriter = gzip.NewWriter(file)
@@ -36,6 +51,9 @@ func GetAllShifts(statInkServer types.Server, client *http.Client, quiet bool) (
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			errs = append(errs, err)
+			buf := make([]byte, 1<<16)
+			stackSize := runtime.Stack(buf, false)
+			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
 			return nil, errs
 		}
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", statInkServer.APIKey))
@@ -49,6 +67,9 @@ func GetAllShifts(statInkServer types.Server, client *http.Client, quiet bool) (
 		resp, err := client.Do(req)
 		if err != nil {
 			errs = append(errs, err)
+			buf := make([]byte, 1<<16)
+			stackSize := runtime.Stack(buf, false)
+			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
 			return nil, errs
 		}
 		defer func() {
@@ -58,26 +79,41 @@ func GetAllShifts(statInkServer types.Server, client *http.Client, quiet bool) (
 		}()
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 			errs = append(errs, err)
+			buf := make([]byte, 1<<16)
+			stackSize := runtime.Stack(buf, false)
+			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
 			return nil, errs
 		}
 		for i := range data {
 			if _, err := os.Stat("statink_shifts"); errors.Is(err, os.ErrNotExist) {
 				if err := os.Mkdir("statink_shifts", os.ModePerm); err != nil {
 					errs = append(errs, err)
+					buf := make([]byte, 1<<16)
+					stackSize := runtime.Stack(buf, false)
+					errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
 					return nil, errs
 				}
 			}
 			fileText, err := json.Marshal(data[i])
 			if err != nil {
 				errs = append(errs, err)
+				buf := make([]byte, 1<<16)
+				stackSize := runtime.Stack(buf, false)
+				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
 				return nil, errs
 			}
 			if _, err := jsonLinesWriter.Write(fileText); err != nil {
 				errs = append(errs, err)
+				buf := make([]byte, 1<<16)
+				stackSize := runtime.Stack(buf, false)
+				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
 				return nil, errs
 			}
 			if _, err := jsonLinesWriter.Write([]byte("\n")); err != nil {
 				errs = append(errs, err)
+				buf := make([]byte, 1<<16)
+				stackSize := runtime.Stack(buf, false)
+				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
 				return nil, errs
 			}
 		}
