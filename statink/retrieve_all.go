@@ -20,16 +20,14 @@ GetAllShifts downloads every shiftStatInk from the provided stat.ink server and 
 func GetAllShifts(db *sql.DB, dbType string, statInkServer *types.Server, client *http.Client, quiet bool) (errs []error) {
 	schedule, errs2 := types.GetSchedules(client)
 	if errs2 != nil {
-		errs = append(errs, errs2...)
-		errs = append(errs, types.NewStackTrace())
+		errs = append(errs, append(errs2, types.NewStackTrace())...)
 		return errs
 	}
 	if statInkServer.APIKey == "" {
 		for len(statInkServer.APIKey) != 43 {
 			log.Println("Please get your stat.ink API key, paste it here, and press enter: ")
 			if _, err := fmt.Scanln(&statInkServer.APIKey); err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
+				errs = append(errs, err, types.NewStackTrace())
 				return errs
 			}
 		}
@@ -40,8 +38,7 @@ func GetAllShifts(db *sql.DB, dbType string, statInkServer *types.Server, client
 		defer cancel()
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, err, types.NewStackTrace())
 			return nil, errs
 		}
 		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", statInkServer.APIKey))
@@ -54,8 +51,7 @@ func GetAllShifts(db *sql.DB, dbType string, statInkServer *types.Server, client
 		}
 		resp, err := client.Do(req)
 		if err != nil {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, err, types.NewStackTrace())
 			return nil, errs
 		}
 		defer func() {
@@ -65,29 +61,25 @@ func GetAllShifts(db *sql.DB, dbType string, statInkServer *types.Server, client
 		}()
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 			log.Println(resp.Status)
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, err, types.NewStackTrace())
 			return nil, errs
 		}
 		var highestID int
 		if err := db.QueryRow("SELECT id FROM Shifts ORDER BY id DESC LIMIT 1;").Scan(&highestID); err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
+				errs = append(errs, err, types.NewStackTrace())
 				return nil, errs
 			}
 		}
 		for i := range data {
 			events, errs2 := data[i].GetEvents()
 			if errs2 != nil {
-				errs = append(errs, errs2...)
-				errs = append(errs, types.NewStackTrace())
+				errs = append(errs, append(errs2, types.NewStackTrace())...)
 				return nil, errs
 			}
 			tides, errs2 := data[i].GetTides()
 			if errs2 != nil {
-				errs = append(errs, errs2...)
-				errs = append(errs, types.NewStackTrace())
+				errs = append(errs, append(errs2, types.NewStackTrace())...)
 				return nil, errs
 			}
 			golden := data[i].GetEggsWaves()
@@ -99,20 +91,17 @@ func GetAllShifts(db *sql.DB, dbType string, statInkServer *types.Server, client
 			}
 			stage, errs2 := data[i].GetStage(nil)
 			if errs2 != nil {
-				errs = append(errs, errs2...)
-				errs = append(errs, types.NewStackTrace())
+				errs = append(errs, append(errs2, types.NewStackTrace())...)
 				return nil, errs
 			}
 			weaponSet, errs2 := data[i].GetWeaponSet(&schedule)
 			if errs2 != nil {
-				errs = append(errs, errs2...)
-				errs = append(errs, types.NewStackTrace())
+				errs = append(errs, append(errs2, types.NewStackTrace())...)
 				return nil, errs
 			}
 			t, errs2 := data[i].GetTime()
 			if errs2 != nil {
-				errs = append(errs, errs2...)
-				errs = append(errs, types.NewStackTrace())
+				errs = append(errs, append(errs2, types.NewStackTrace())...)
 				return nil, errs
 			}
 			var w1event, w1tide, w2event, w2tide, w3event, w3tide string
@@ -135,26 +124,22 @@ func GetAllShifts(db *sql.DB, dbType string, statInkServer *types.Server, client
 			if dbType == "sqlite" {
 				if err := db.QueryRow("SELECT id FROM Shifts WHERE identifier = ?", data[i].GetIdentifier(*statInkServer)).Scan(&id); err != nil {
 					if !errors.Is(err, sql.ErrNoRows) {
-						errs = append(errs, err)
-						errs = append(errs, types.NewStackTrace())
+						errs = append(errs, err, types.NewStackTrace())
 						return nil, errs
 					}
 					if _, err := db.Exec("INSERT INTO Shifts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", data[i].GetIdentifier(*statInkServer), w1event, w1tide, w1g, w2event, w2tide, w2g, w3event, w3tide, w3g, clearWave, princess, stage, *weaponSet, t.Unix(), highestID+i+1); err != nil {
-						errs = append(errs, err)
-						errs = append(errs, types.NewStackTrace())
+						errs = append(errs, err, types.NewStackTrace())
 						return nil, errs
 					}
 				}
 			} else if dbType == "postgresql" {
 				if err := db.QueryRow("SELECT id FROM Shifts WHERE identifier = $1", data[i].GetIdentifier(*statInkServer)).Scan(&id); err != nil {
 					if !errors.Is(err, sql.ErrNoRows) {
-						errs = append(errs, err)
-						errs = append(errs, types.NewStackTrace())
+						errs = append(errs, err, types.NewStackTrace())
 						return nil, errs
 					}
 					if _, err := db.Exec("INSERT INTO Shifts VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);", data[i].GetIdentifier(*statInkServer), w1event, w1tide, w1g, w2event, w2tide, w2g, w3event, w3tide, w3g, clearWave, princess, stage, *weaponSet, t.Unix(), highestID+i+1); err != nil {
-						errs = append(errs, err)
-						errs = append(errs, types.NewStackTrace())
+						errs = append(errs, err, types.NewStackTrace())
 						return nil, errs
 					}
 				}
@@ -169,8 +154,7 @@ func GetAllShifts(db *sql.DB, dbType string, statInkServer *types.Server, client
 		identStrs := strings.Split(ident, "/")
 		idBig, err := strconv.ParseInt(identStrs[len(identStrs)-1], 10, 32)
 		if err != nil {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, err, types.NewStackTrace())
 			return errs
 		}
 		id = int(idBig)

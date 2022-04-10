@@ -146,7 +146,7 @@ func (s *shiftStatInk) GetStage(_ *types.Schedule) (*types.Stage, []error) {
 	case "tokishirazu":
 		stageRes = types.SalmonidSmokeyard
 	default:
-		errs := []error{&types.ErrStrStageNotFound{s.Stage.Key}}
+		errs := []error{&types.ErrStrStageNotFound{Stage: s.Stage.Key}}
 		errs = append(errs, types.NewStackTrace())
 		return nil, errs
 	}
@@ -213,7 +213,7 @@ func (s *shiftStatInk) GetTides() (*types.TideArr, []error) {
 }
 
 func (s *shiftStatInk) GetEggsWaves() []int {
-	eggs := []int{}
+	var eggs []int
 	for i := range s.Waves {
 		eggs = append(eggs, *s.Waves[i].GoldenEggDelivered)
 	}

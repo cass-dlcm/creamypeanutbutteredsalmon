@@ -43,8 +43,7 @@ func GetAllShifts(db *sql.DB, dbType, sessionToken, cookie, locale, userID strin
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
+		errs = append(errs, err, types.NewStackTrace())
 		return &sessionToken, &cookie, &userID, errs
 	}
 
@@ -64,8 +63,7 @@ func GetAllShifts(db *sql.DB, dbType, sessionToken, cookie, locale, userID strin
 
 	resp, err := client.Do(req)
 	if err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
+		errs = append(errs, err, types.NewStackTrace())
 		return &sessionToken, &cookie, &userID, errs
 	}
 
@@ -80,16 +78,14 @@ func GetAllShifts(db *sql.DB, dbType, sessionToken, cookie, locale, userID strin
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		newSessionToken, newCookie, errs2 := splatnetiksm.GenNewCookie(locale, sessionToken, "blank", client)
 		if len(errs2) > 0 {
-			errs = append(errs, errs2...)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, append(errs2, types.NewStackTrace())...)
 			return &sessionToken, &cookie, &userID, errs
 		}
 		sessionToken = *newSessionToken
 		cookie = *newCookie
 		newSessionToken, newCookie, newID, errs2 := GetAllShifts(db, dbType, sessionToken, cookie, locale, userID, client, quiet)
 		if len(errs2) > 0 {
-			errs = append(errs, errs2...)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, append(errs2, types.NewStackTrace())...)
 			return &sessionToken, &cookie, &userID, errs
 		}
 		return newSessionToken, newCookie, newID, nil
@@ -98,8 +94,7 @@ func GetAllShifts(db *sql.DB, dbType, sessionToken, cookie, locale, userID strin
 	if data.Code != nil {
 		newSessionToken, newCookie, errs2 := splatnetiksm.GenNewCookie(locale, sessionToken, "auth", client)
 		if len(errs2) > 0 {
-			errs = append(errs, errs2...)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, append(errs2, types.NewStackTrace())...)
 			return &sessionToken, &cookie, &userID, errs
 		} else {
 			sessionToken = *newSessionToken
@@ -115,8 +110,7 @@ func GetAllShifts(db *sql.DB, dbType, sessionToken, cookie, locale, userID strin
 	var highestID int
 	if err := db.QueryRow("SELECT id FROM Shifts ORDER BY id DESC LIMIT 1;").Scan(&highestID); err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, err, types.NewStackTrace())
 			return &sessionToken, &cookie, &userID, errs
 		}
 	}
@@ -140,47 +134,44 @@ func GetAllShifts(db *sql.DB, dbType, sessionToken, cookie, locale, userID strin
 			w1tide = result.WaveDetails[0].WaterLevel.Key
 			w1g = result.WaveDetails[0].GoldenEggs
 		}
-		totalGolden := result.GetTotalEggs()
+		totalGolden := 0
+		for i := range result.WaveDetails {
+			totalGolden += result.WaveDetails[i].GoldenEggs
+		}
 		princess := 0
 		if totalGolden == result.MyResult.GoldenEggs || (len(result.OtherResults) > 0 && (totalGolden == result.OtherResults[0].GoldenEggs || (len(result.OtherResults) > 1 && (totalGolden == result.OtherResults[1].GoldenEggs || (len(result.OtherResults) > 2 && totalGolden == result.OtherResults[2].GoldenEggs))))) {
 			princess = 1
 		}
 		stage, errs2 := result.GetStage(nil)
 		if errs2 != nil {
-			errs = append(errs, errs2...)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, append(errs2, types.NewStackTrace())...)
 			return &sessionToken, &cookie, &userID, errs
 		}
 		weaponSet, errs2 := result.GetWeaponSet(nil)
 		if errs2 != nil {
-			errs = append(errs, errs2...)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, append(errs2, types.NewStackTrace())...)
 			return &sessionToken, &cookie, &userID, errs
 		}
 		var id int
 		if dbType == "sqlite" {
 			if err := db.QueryRow("SELECT id FROM Shifts WHERE time = ?", result.PlayTime).Scan(&id); err != nil {
 				if !errors.Is(err, sql.ErrNoRows) {
-					errs = append(errs, err)
-					errs = append(errs, types.NewStackTrace())
+					errs = append(errs, err, types.NewStackTrace())
 					return &sessionToken, &cookie, &userID, errs
 				}
 				if _, err := db.Exec("INSERT INTO Shifts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", fmt.Sprintf("https://app.splatoon2.nintendo.net/api/coop_results/%d", result.JobID), w1event, w1tide, w1g, w2event, w2tide, w2g, w3event, w3tide, w3g, result.GetClearWave(), princess, stage, *weaponSet, result.PlayTime, highestID+i+1); err != nil {
-					errs = append(errs, err)
-					errs = append(errs, types.NewStackTrace())
+					errs = append(errs, err, types.NewStackTrace())
 					return &sessionToken, &cookie, &userID, errs
 				}
 			}
 		} else if dbType == "postgresql" {
 			if err := db.QueryRow("SELECT id FROM Shifts WHERE identifier = $1", fmt.Sprintf("https://app.splatoon2.nintendo.net/api/coop_results/%d", result.JobID)).Scan(&id); err != nil {
 				if !errors.Is(err, sql.ErrNoRows) {
-					errs = append(errs, err)
-					errs = append(errs, types.NewStackTrace())
+					errs = append(errs, err, types.NewStackTrace())
 					return &sessionToken, &cookie, &userID, errs
 				}
 				if _, err := db.Exec("INSERT INTO Shifts VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);", fmt.Sprintf("https://app.splatoon2.nintendo.net/api/coop_results/%d", result.JobID), w1event, w1tide, w1g, w2event, w2tide, w2g, w3event, w3tide, w3g, result.GetClearWave(), princess, stage, *weaponSet, result.PlayTime, highestID+i+1); err != nil {
-					errs = append(errs, err)
-					errs = append(errs, types.NewStackTrace())
+					errs = append(errs, err, types.NewStackTrace())
 					return &sessionToken, &cookie, &userID, errs
 				}
 			}

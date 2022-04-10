@@ -62,7 +62,7 @@ type DBShift struct {
 	id         int
 }
 
-func (D DBShift) GetTotalEggs() int {
+func (D *DBShift) GetTotalEggs() int {
 	sum := 0
 	for i := 0; i < D.clearWave; i++ {
 		sum += D.eggsWaves[i]
@@ -70,35 +70,35 @@ func (D DBShift) GetTotalEggs() int {
 	return sum
 }
 
-func (D DBShift) GetStage(_ *types.Schedule) (*types.Stage, []error) {
+func (D *DBShift) GetStage(_ *types.Schedule) (*types.Stage, []error) {
 	return &D.stage, nil
 }
 
-func (D DBShift) GetWeaponSet(_ *types.Schedule) (*types.WeaponSchedule, []error) {
+func (D *DBShift) GetWeaponSet(_ *types.Schedule) (*types.WeaponSchedule, []error) {
 	return &D.weaponSet, nil
 }
 
-func (D DBShift) GetEvents() (*types.EventArr, []error) {
+func (D *DBShift) GetEvents() (*types.EventArr, []error) {
 	return &D.events, nil
 }
 
-func (D DBShift) GetTides() (*types.TideArr, []error) {
+func (D *DBShift) GetTides() (*types.TideArr, []error) {
 	return &D.tides, nil
 }
 
-func (D DBShift) GetEggsWaves() []int {
+func (D *DBShift) GetEggsWaves() []int {
 	return D.eggsWaves
 }
 
-func (D DBShift) GetClearWave() int {
+func (D *DBShift) GetClearWave() int {
 	return D.clearWave
 }
 
-func (D DBShift) GetTime() (time.Time, []error) {
+func (D *DBShift) GetTime() (time.Time, []error) {
 	return time.Unix(int64(D.time), 0), nil
 }
 
-func (D DBShift) GetIdentifier() string {
+func (D *DBShift) GetIdentifier() string {
 	return D.identifier
 }
 
@@ -110,10 +110,6 @@ type DBShiftIterator struct {
 
 func NewDBShiftIterator(db *sql.DB, dbType string) *DBShiftIterator {
 	return &DBShiftIterator{db: db, dbType: dbType}
-}
-
-func (d DBShiftIterator) GetAddress() string {
-	return ""
 }
 
 func (d *DBShiftIterator) Next() (Shift, []error) {
@@ -150,7 +146,7 @@ func (d *DBShiftIterator) Next() (Shift, []error) {
 	for i := range eventStrs {
 		event := types.DisplayStringToEvent(eventStrs[i])
 		if event == nil {
-			return nil, []error{&types.ErrStrEventNotFound{eventStrs[i]}, types.NewStackTrace()}
+			return nil, []error{&types.ErrStrEventNotFound{Event: eventStrs[i]}, types.NewStackTrace()}
 		}
 		shift.events[i] = *event
 	}
@@ -165,7 +161,7 @@ func (d *DBShiftIterator) Next() (Shift, []error) {
 type record struct {
 	Time         time.Time
 	RecordAmount int
-	Identifier   map[string]string
+	Identifier   []string
 }
 
 func getRecordNames() []recordName {
@@ -217,7 +213,6 @@ ShiftIterator fulfils the design pattern of iterating through a set of Shift, on
 */
 type ShiftIterator interface {
 	Next() (Shift, []error)
-	GetAddress() string
 }
 
 /*

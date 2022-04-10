@@ -1,13 +1,8 @@
 package splatnet
 
 import (
-	"bufio"
-	"compress/gzip"
-	"encoding/json"
 	"fmt"
-	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core/types"
-	"os"
 )
 
 type shiftList struct {
@@ -75,27 +70,6 @@ type shiftList struct {
 }
 
 type shiftSplatnetResults []shiftSplatnet
-
-func (ssr *shiftSplatnetResults) inList(s *shiftSplatnet) bool {
-	for i := range *ssr {
-		if (*ssr)[i].Equals(s) {
-			return true
-		}
-	}
-	return false
-}
-
-func (s *shiftSplatnet) Equals(s2 *shiftSplatnet) bool {
-	return s.PlayTime == s2.PlayTime
-}
-
-func (s *shiftSplatnet) GetTotalEggs() int {
-	sum := 0
-	for i := range s.WaveDetails {
-		sum += s.WaveDetails[i].GoldenEggs
-	}
-	return sum
-}
 
 type shiftSplatnet struct {
 	JobID           int64                   `json:"job_id"`
@@ -288,45 +262,6 @@ const (
 
 func (s *shiftSplatnet) GetIdentifier() string {
 	return fmt.Sprintf("%d", s.JobID)
-}
-
-type shiftSplatnetIterator struct {
-	f          *os.File
-	buffRead   *bufio.Scanner
-	gzipReader *gzip.Reader
-}
-
-func (s *shiftSplatnetIterator) Next() (shift core.Shift, errs []error) {
-	data := &shiftSplatnet{}
-	if s.buffRead.Scan() {
-		if err := json.Unmarshal([]byte(s.buffRead.Text()), &data); err != nil {
-			errs = append(errs, err)
-			if err := s.f.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := s.gzipReader.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			return nil, errs
-		}
-		if data == nil {
-			errs = append(errs, &core.NoMoreShiftsError{})
-			return nil, errs
-		}
-		return data, nil
-	}
-	if err := s.f.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := s.gzipReader.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	errs = append(errs, &core.NoMoreShiftsError{})
-	return nil, errs
-}
-
-func (*shiftSplatnetIterator) GetAddress() string {
-	return "https://app.splatoon2.nintendo.net/api/coop_results/"
 }
 
 func (s *shiftSplatnet) GetClearWave() int {

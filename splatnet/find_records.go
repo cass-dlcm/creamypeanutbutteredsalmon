@@ -116,7 +116,7 @@ func (s *shiftSplatnet) GetTides() (*types.TideArr, []error) {
 }
 
 func (s *shiftSplatnet) GetEggsWaves() []int {
-	eggs := []int{}
+	var eggs []int
 	for i := range s.WaveDetails {
 		eggs = append(eggs, s.WaveDetails[i].GoldenEggs)
 	}

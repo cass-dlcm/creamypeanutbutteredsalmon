@@ -87,11 +87,11 @@ type shiftSalmonStats struct {
 	} `json:"waves"`
 }
 
-func (s shiftSalmonStats) GetTotalEggs() int {
+func (s *shiftSalmonStats) GetTotalEggs() int {
 	return s.GoldenEggDelivered
 }
 
-func (s shiftSalmonStats) GetStage(schedule *types.Schedule) (*types.Stage, []error) {
+func (s *shiftSalmonStats) GetStage(schedule *types.Schedule) (*types.Stage, []error) {
 	var stageRes types.Stage
 	var errs []error
 	scheduleTime, err := time.Parse("2006-01-02 15:04:05", s.ScheduleID)
@@ -122,7 +122,7 @@ func (s shiftSalmonStats) GetStage(schedule *types.Schedule) (*types.Stage, []er
 	return nil, errs
 }
 
-func (s shiftSalmonStats) GetWeaponSet(weaponSets *types.Schedule) (*types.WeaponSchedule, []error) {
+func (s *shiftSalmonStats) GetWeaponSet(weaponSets *types.Schedule) (*types.WeaponSchedule, []error) {
 	var weaponRes types.WeaponSchedule
 	scheduleTime, err := time.Parse("2006-01-02 15:04:05", s.ScheduleID)
 	if err != nil {
@@ -152,7 +152,7 @@ func (s shiftSalmonStats) GetWeaponSet(weaponSets *types.Schedule) (*types.Weapo
 	return nil, errs
 }
 
-func (s shiftSalmonStats) GetEvents() (*types.EventArr, []error) {
+func (s *shiftSalmonStats) GetEvents() (*types.EventArr, []error) {
 	events := types.EventArr{}
 	for i := range s.Waves {
 		switch s.Waves[i].EventID {
@@ -179,7 +179,7 @@ func (s shiftSalmonStats) GetEvents() (*types.EventArr, []error) {
 	return &events, nil
 }
 
-func (s shiftSalmonStats) GetTides() (*types.TideArr, []error) {
+func (s *shiftSalmonStats) GetTides() (*types.TideArr, []error) {
 	tides := types.TideArr{}
 	for i := range s.Waves {
 		switch s.Waves[i].WaterID {
@@ -198,19 +198,19 @@ func (s shiftSalmonStats) GetTides() (*types.TideArr, []error) {
 	return &tides, nil
 }
 
-func (s shiftSalmonStats) GetEggsWaves() []int {
-	eggs := []int{}
+func (s *shiftSalmonStats) GetEggsWaves() []int {
+	var eggs []int
 	for i := range s.Waves {
 		eggs = append(eggs, s.Waves[i].GoldenEggDelivered)
 	}
 	return eggs
 }
 
-func (s shiftSalmonStats) GetWaveCount() int {
+func (s *shiftSalmonStats) GetWaveCount() int {
 	return len(s.Waves)
 }
 
-func (s shiftSalmonStats) GetTime() (time.Time, []error) {
+func (s *shiftSalmonStats) GetTime() (time.Time, []error) {
 	startTime, err := time.Parse("2006-01-02 15:04:05", s.StartAt)
 	if err != nil {
 		errs := []error{err}
@@ -220,6 +220,6 @@ func (s shiftSalmonStats) GetTime() (time.Time, []error) {
 	return startTime.Local(), nil
 }
 
-func (s shiftSalmonStats) GetIdentifier(server types.Server) string {
+func (s *shiftSalmonStats) GetIdentifier(server types.Server) string {
 	return fmt.Sprintf("%sresults/%d/", server.Address, s.ID)
 }

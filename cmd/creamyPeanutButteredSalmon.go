@@ -21,14 +21,13 @@ import (
 )
 
 func setLanguage() (string, []error) {
-	errs := []error{}
+	var errs []error
 	log.Println("Please enter your locale (see readme for list).")
 
 	var locale string
 	// Taking input from user
 	if _, err := fmt.Scanln(&locale); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
+		errs = append(errs, err, types.NewStackTrace())
 		return "", errs
 	}
 	languageList := map[string]string{
@@ -49,8 +48,7 @@ func setLanguage() (string, []error) {
 		log.Println("Invalid language code. Please try entering it again.")
 
 		if _, err := fmt.Scanln(&locale); err != nil {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, err, types.NewStackTrace())
 			return "", errs
 		}
 
@@ -60,7 +58,7 @@ func setLanguage() (string, []error) {
 }
 
 func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server) (bool, []types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []*types.Server, bool, []*types.Server, string, []error) {
-	errs := []error{}
+	var errs []error
 	mostRecentBool := flag.Bool("recent", false, "To calculate personal bests for the most recent rotation only.")
 	stagesStr := flag.String("stage", "spawning_grounds marooners_bay lost_outpost salmonid_smokeyard ruins_of_ark_polaris", "To set a specific set of stages.")
 	hasEventsStr := flag.String("event", "water_levels rush fog goldie_seeking griller cohock_charge mothership", "To set a specific set of events.")
@@ -73,15 +71,15 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 	flag.Parse()
 
 	if *mostRecentBool && *stagesStr != "spawning_grounds marooners_bay lost_outpost salmonid_smokeyard ruins_of_ark_polaris" {
-		errs = append(errs, errors.New("incorrect flags; recent cannot be used with the stages flag"))
-		errs = append(errs, types.NewStackTrace())
+		errs = append(errs, errors.New("incorrect flags; recent cannot be used with the stages flag"), types.NewStackTrace())
 		return false, nil, nil, nil, nil, nil, false, nil, "", errs
 	}
 	if *mostRecentBool && *hasWeapons != "set single_random four_random random_gold" {
-		log.Panicln("Incorrect flags; recent cannot be used with the weapons flag")
+		errs = append(errs, errors.New("Incorrect flags; recent cannot be used with the weapons flag"), types.NewStackTrace())
+		return false, nil, nil, nil, nil, nil, false, nil, "", errs
 	}
 
-	stages := []types.Stage{}
+	var stages []types.Stage
 	stagesStrArr := strings.Split(*stagesStr, " ")
 	for i := range stagesStrArr {
 		var stageRes types.Stage
@@ -97,24 +95,22 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 		case "ruins_of_ark_polaris":
 			stageRes = types.RuinsOfArkPolaris
 		default:
-			errs = append(errs, &types.ErrStrStageNotFound{Stage: stagesStrArr[i]})
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, &types.ErrStrStageNotFound{Stage: stagesStrArr[i]}, types.NewStackTrace())
 			return false, nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 		stages = append(stages, stageRes)
 	}
-	hasEvents := []types.Event{}
+	var hasEvents []types.Event
 	eventsStrArr := strings.Split(*hasEventsStr, " ")
 	for i := range eventsStrArr {
 		eventRes, errs2 := types.StringToEvent(eventsStrArr[i])
 		if errs2 != nil {
-			errs = append(errs, errs2...)
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, append(errs2, types.NewStackTrace())...)
 			return false, nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 		hasEvents = append(hasEvents, *eventRes)
 	}
-	weapons := []types.WeaponSchedule{}
+	var weapons []types.WeaponSchedule
 	weaponsStrArr := strings.Split(*hasWeapons, " ")
 	for i := range weaponsStrArr {
 		var weaponVal types.WeaponSchedule
@@ -122,14 +118,13 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 		case string(types.RandommGrizzco), string(types.SingleRandom), string(types.FourRandom), string(types.Set):
 			weaponVal = types.WeaponSchedule(weaponsStrArr[i])
 		default:
-			errs = append(errs, &types.ErrStrWeaponsNotFound{Weapons: weaponsStrArr[i]})
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, &types.ErrStrWeaponsNotFound{Weapons: weaponsStrArr[i]}, types.NewStackTrace())
 			return false, nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 		weapons = append(weapons, weaponVal)
 	}
 
-	tides := []types.Tide{}
+	var tides []types.Tide
 	tidesStrArr := strings.Split(*hasTides, " ")
 	for i := range tidesStrArr {
 		inTide := types.Tide(tidesStrArr[i])
@@ -137,14 +132,13 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 		case types.Ht, types.Lt, types.Nt:
 			tides = append(tides, inTide)
 		default:
-			errs = append(errs, &types.ErrStrTideNotFound{Tide: tidesStrArr[i]})
-			errs = append(errs, types.NewStackTrace())
+			errs = append(errs, &types.ErrStrTideNotFound{Tide: tidesStrArr[i]}, types.NewStackTrace())
 			return false, nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 	}
 
 	statInkURLNicks := strings.Split(*statInk, " ")
-	statInkServers := []*types.Server{}
+	var statInkServers []*types.Server
 	for i := range statInkURLNicks {
 		for j := range statInkURLConf {
 			if statInkURLConf[j].ShortName == statInkURLNicks[i] {
@@ -154,7 +148,7 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 	}
 
 	salmonStatsURLNicks := strings.Split(*salmonStats, " ")
-	salmonStatsServers := []*types.Server{}
+	var salmonStatsServers []*types.Server
 	for i := range salmonStatsURLNicks {
 		for j := range salmonStatsURLConf {
 			if salmonStatsURLConf[j].ShortName == salmonStatsURLNicks[i] {
