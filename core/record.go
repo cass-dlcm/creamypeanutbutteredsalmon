@@ -36,21 +36,21 @@ Shift is a generic source of match results, with only the necessary details avai
 */
 type Shift interface {
 	GetTotalEggs() int
-	GetStage(types.Schedule) (*types.Stage, []error)
-	GetWeaponSet(types.Schedule) (*types.WeaponSchedule, []error)
+	GetStage(*types.Schedule) (*types.Stage, []error)
+	GetWeaponSet(*types.Schedule) (*types.WeaponSchedule, []error)
 	GetEvents() (*types.EventArr, []error)
 	GetTides() (*types.TideArr, []error)
 	GetEggsWaves() []int
 	GetWaveCount() int
 	GetClearWave() int
 	GetTime() (time.Time, []error)
-	GetIdentifier(string) string
+	GetIdentifier() string
 }
 
 type record struct {
 	Time         time.Time
 	RecordAmount int
-	Identifier   []string
+	Identifier   map[string]string
 }
 
 func getRecordNames() []recordName {
@@ -81,6 +81,15 @@ func getRecordNames() []recordName {
 
 func getAllRecords() map[recordName]*map[string]*map[types.WeaponSchedule]*record {
 	records := map[recordName]*map[string]*map[types.WeaponSchedule]*record{}
+	recordNames := getRecordNames()
+	for i := range recordNames {
+		records[recordNames[i]] = nil
+	}
+	return records
+}
+
+func getLatestRecords() map[recordName]*record {
+	records := map[recordName]*record{}
 	recordNames := getRecordNames()
 	for i := range recordNames {
 		records[recordNames[i]] = nil

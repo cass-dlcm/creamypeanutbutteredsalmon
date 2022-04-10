@@ -1,9 +1,7 @@
 package splatnet
 
 import (
-	"fmt"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core/types"
-	"runtime"
 	"time"
 )
 
@@ -12,7 +10,7 @@ const (
 	randomSchedule        = "-1"
 )
 
-func (s *shiftSplatnet) GetWeaponSet(_ types.Schedule) (*types.WeaponSchedule, []error) {
+func (s *shiftSplatnet) GetWeaponSet(_ *types.Schedule) (*types.WeaponSchedule, []error) {
 	var wS types.WeaponSchedule
 	if s.Schedule.Weapons[0].ID == randomGrizzcoSchedule &&
 		s.Schedule.Weapons[1].ID == randomGrizzcoSchedule &&
@@ -39,10 +37,8 @@ func (s *shiftSplatnet) GetWeaponSet(_ types.Schedule) (*types.WeaponSchedule, [
 		wS = types.Set
 	}
 	if wS == "" {
-		errs := []error{fmt.Errorf("WeaponSchedule not found: %s %s %s %s", s.Schedule.Weapons[0].ID, s.Schedule.Weapons[1].ID, s.Schedule.Weapons[2].ID, s.Schedule.Weapons[3].ID)}
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs := []error{&ErrWeaponsNotFound{s.Schedule.Weapons[0].ID, s.Schedule.Weapons[1].ID, s.Schedule.Weapons[2].ID, s.Schedule.Weapons[3].ID}}
+		errs = append(errs, types.NewStackTrace())
 		return nil, errs
 	}
 	return &wS, nil
@@ -68,10 +64,8 @@ func (s *shiftSplatnet) GetEvents() (*types.EventArr, []error) {
 		case rush:
 			e = types.Rush
 		default:
-			errs := []error{fmt.Errorf("no event found: %s", s.WaveDetails[i].EventType.Key)}
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs := []error{&types.ErrStrEventNotFound{Event: string(s.WaveDetails[i].EventType.Key)}}
+			errs = append(errs, types.NewStackTrace())
 			return nil, errs
 		}
 		events = append(events, e)
@@ -79,7 +73,7 @@ func (s *shiftSplatnet) GetEvents() (*types.EventArr, []error) {
 	return &events, nil
 }
 
-func (s *shiftSplatnet) GetStage(_ types.Schedule) (*types.Stage, []error) {
+func (s *shiftSplatnet) GetStage(_ *types.Schedule) (*types.Stage, []error) {
 	var stageResult types.Stage
 	switch s.Schedule.Stage.Name {
 	case polaris:
@@ -93,10 +87,8 @@ func (s *shiftSplatnet) GetStage(_ types.Schedule) (*types.Stage, []error) {
 	case grounds:
 		stageResult = types.SpawningGrounds
 	default:
-		errs := []error{fmt.Errorf("stage not found: %s", s.Schedule.Stage.Name)}
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs := []error{&types.ErrStrStageNotFound{Stage: s.Schedule.Stage.Name}}
+		errs = append(errs, types.NewStackTrace())
 		return nil, errs
 	}
 	return &stageResult, nil
@@ -114,10 +106,8 @@ func (s *shiftSplatnet) GetTides() (*types.TideArr, []error) {
 		case nt:
 			t = types.Nt
 		default:
-			errs := []error{fmt.Errorf("tide not found: %s", s.WaveDetails[i].WaterLevel.Key)}
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs := []error{&types.ErrStrTideNotFound{Tide: s.WaveDetails[i].WaterLevel.Key}}
+			errs = append(errs, types.NewStackTrace())
 			return nil, errs
 		}
 		tides = append(tides, t)

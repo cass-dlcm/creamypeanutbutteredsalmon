@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func filterStages(stages []types.Stage, data Shift, schedules types.Schedule) (Shift, []error) {
+func filterStages(stages []types.Stage, data Shift, schedules *types.Schedule) (Shift, []error) {
 	stage, errs := data.GetStage(schedules)
 	if errs != nil {
 		return nil, errs
@@ -40,7 +40,7 @@ func filterTides(tides []types.Tide, data Shift) (Shift, []error) {
 	return nil, nil
 }
 
-func filterWeapons(weapons []types.WeaponSchedule, data Shift, schedules types.Schedule) (Shift, []error) {
+func filterWeapons(weapons []types.WeaponSchedule, data Shift, schedules *types.Schedule) (Shift, []error) {
 	weaponSet, errs := data.GetWeaponSet(schedules)
 	if errs != nil {
 		return nil, errs
@@ -69,7 +69,7 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 			if shift == nil {
 				break
 			}
-			shift, errs2 = filterStages(stages, shift, scheduleList)
+			shift, errs2 = filterStages(stages, shift, &scheduleList)
 			if errs2 != nil {
 				errs = append(errs, errs2...)
 				return nil, errs
@@ -96,7 +96,7 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 				shift, errs2 = iterators[i].Next()
 				continue
 			}
-			shift, errs2 = filterWeapons(weapons, shift, scheduleList)
+			shift, errs2 = filterWeapons(weapons, shift, &scheduleList)
 			if len(errs2) > 0 {
 				errs = append(errs, errs2...)
 				return nil, errs
@@ -106,8 +106,8 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 				continue
 			}
 			totalEggs := shift.GetTotalEggs()
-			weaponsType, _ := shift.GetWeaponSet(scheduleList)
-			stage, _ := shift.GetStage(scheduleList)
+			weaponsType, _ := shift.GetWeaponSet(&scheduleList)
+			stage, _ := shift.GetStage(&scheduleList)
 			nightCount := 0
 			waveCount := shift.GetWaveCount()
 			waveEggs := shift.GetEggsWaves()
@@ -120,7 +120,7 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 				errs = append(errs, errs2...)
 				return nil, errs
 			}
-			for l := 0; l < waveCount && i < clearWaves; l++ {
+			for l := 0; l < waveCount && l < clearWaves; l++ {
 				if (*waveEvents)[l] == types.WaterLevels && hasEvents.HasElement(types.WaterLevels) {
 					if records[recordName(string((*waveWaterLevel)[l])+" Normal")] == nil {
 						records[recordName(string((*waveWaterLevel)[l])+" Normal")] = &map[string]*map[types.WeaponSchedule]*record{}
@@ -132,15 +132,14 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 						(*(*records[recordName(string((*waveWaterLevel)[l])+" Normal")])[stage.String()])[*weaponsType] = &record{
 							Time:         shiftTime,
 							RecordAmount: waveEggs[l],
-							Identifier:   []string{shift.GetIdentifier(addr)},
+							Identifier:   map[string]string{addr: shift.GetIdentifier()},
 						}
 					} else if (*(*records[recordName(string((*waveWaterLevel)[l])+" Normal")])[stage.String()])[*weaponsType].Time == shiftTime {
-						(*(*records[recordName(string((*waveWaterLevel)[l])+" Normal")])[stage.String()])[*weaponsType].Identifier = append((*(*records[recordName(string((*waveWaterLevel)[l])+" Normal")])[stage.String()])[*weaponsType].Identifier, shift.GetIdentifier(addr))
+						(*(*records[recordName(string((*waveWaterLevel)[l])+" Normal")])[stage.String()])[*weaponsType].Identifier[addr] = shift.GetIdentifier()
 					}
 					continue
 				}
-				var eventStr string
-				eventStr, errs2 = (*waveEvents)[l].String()
+				eventStr, errs2 := (*waveEvents)[l].String()
 				if len(errs2) > 0 {
 					errs = append(errs, errs2...)
 					return nil, errs
@@ -157,10 +156,10 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 						(*(*records[recordName(string((*waveWaterLevel)[l])+" "+eventStr)])[stage.String()])[*weaponsType] = &record{
 							Time:         shiftTime,
 							RecordAmount: waveEggs[l],
-							Identifier:   []string{shift.GetIdentifier(addr)},
+							Identifier:   map[string]string{addr: shift.GetIdentifier()},
 						}
 					} else if (*(*records[recordName(string((*waveWaterLevel)[l])+" "+eventStr)])[stage.String()])[*weaponsType].Time == shiftTime {
-						(*(*records[recordName(string((*waveWaterLevel)[l])+" "+eventStr)])[stage.String()])[*weaponsType].Identifier = append((*(*records[recordName(string((*waveWaterLevel)[l])+" "+eventStr)])[stage.String()])[*weaponsType].Identifier, shift.GetIdentifier(addr))
+						(*(*records[recordName(string((*waveWaterLevel)[l])+" "+eventStr)])[stage.String()])[*weaponsType].Identifier[addr] = shift.GetIdentifier()
 					}
 				}
 				nightCount++
@@ -176,10 +175,10 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 					(*(*records[totalGoldenEggs])[stage.String()])[*weaponsType] = &record{
 						Time:         shiftTime,
 						RecordAmount: totalEggs,
-						Identifier:   []string{shift.GetIdentifier(addr)},
+						Identifier:   map[string]string{addr: shift.GetIdentifier()},
 					}
 				} else if (*(*records[totalGoldenEggs])[stage.String()])[*weaponsType].Time == shiftTime {
-					(*(*records[totalGoldenEggs])[stage.String()])[*weaponsType].Identifier = append((*(*records[totalGoldenEggs])[stage.String()])[*weaponsType].Identifier, shift.GetIdentifier(addr))
+					(*(*records[totalGoldenEggs])[stage.String()])[*weaponsType].Identifier[addr] = shift.GetIdentifier()
 				}
 				if nightCount == 2 {
 					if records[totalGoldenEggsTwoNight] == nil {
@@ -192,10 +191,10 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 						(*(*records[totalGoldenEggsTwoNight])[stage.String()])[*weaponsType] = &record{
 							Time:         shiftTime,
 							RecordAmount: totalEggs,
-							Identifier:   []string{shift.GetIdentifier(addr)},
+							Identifier:   map[string]string{addr: shift.GetIdentifier()},
 						}
 					} else if (*(*records[totalGoldenEggsTwoNight])[stage.String()])[*weaponsType].Time == shiftTime {
-						(*(*records[totalGoldenEggsTwoNight])[stage.String()])[*weaponsType].Identifier = append((*(*records[totalGoldenEggsTwoNight])[stage.String()])[*weaponsType].Identifier, shift.GetIdentifier(addr))
+						(*(*records[totalGoldenEggsTwoNight])[stage.String()])[*weaponsType].Identifier[addr] = shift.GetIdentifier()
 					}
 				}
 				if nightCount == 1 {
@@ -209,10 +208,10 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 						(*(*records[totalGoldenEggsOneNight])[stage.String()])[*weaponsType] = &record{
 							Time:         shiftTime,
 							RecordAmount: totalEggs,
-							Identifier:   []string{shift.GetIdentifier(addr)},
+							Identifier:   map[string]string{addr: shift.GetIdentifier()},
 						}
 					} else if (*(*records[totalGoldenEggsOneNight])[stage.String()])[*weaponsType].Time == shiftTime {
-						(*(*records[totalGoldenEggsOneNight])[stage.String()])[*weaponsType].Identifier = append((*(*records[totalGoldenEggsOneNight])[stage.String()])[*weaponsType].Identifier, shift.GetIdentifier(addr))
+						(*(*records[totalGoldenEggsOneNight])[stage.String()])[*weaponsType].Identifier[addr] = shift.GetIdentifier()
 					}
 				}
 				if nightCount == 0 {
@@ -226,10 +225,196 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 						(*(*records[totalGoldenEggsNoNight])[stage.String()])[*weaponsType] = &record{
 							Time:         shiftTime,
 							RecordAmount: totalEggs,
-							Identifier:   []string{shift.GetIdentifier(addr)},
+							Identifier:   map[string]string{addr: shift.GetIdentifier()},
 						}
 					} else if (*(*records[totalGoldenEggsNoNight])[stage.String()])[*weaponsType].Time == shiftTime {
-						(*(*records[totalGoldenEggsNoNight])[stage.String()])[*weaponsType].Identifier = append((*(*records[totalGoldenEggsNoNight])[stage.String()])[*weaponsType].Identifier, shift.GetIdentifier(addr))
+						(*(*records[totalGoldenEggsNoNight])[stage.String()])[*weaponsType].Identifier[addr] = shift.GetIdentifier()
+					}
+				}
+			}
+			shift, errs2 = iterators[i].Next()
+		}
+		if len(errs2) > 0 {
+			if errors.Is(errs2[0], &NoMoreShiftsError{}) {
+				continue
+			}
+			errs = append(errs, errs2...)
+			return nil, errs
+		}
+	}
+	return records, nil
+}
+
+func filterSchedule(shift Shift, latest types.ScheduleItem, schedule *types.Schedule) (Shift, []error) {
+	stage, errs := shift.GetStage(schedule)
+	if errs != nil {
+		return nil, errs
+	}
+	if stage.StringJP() != latest.Stage.Name {
+		return nil, nil
+	}
+	weapons, errs := shift.GetWeaponSet(schedule)
+	if errs != nil {
+		return nil, errs
+	}
+	var weaponRes types.WeaponSchedule
+	weaponSets := latest.Weapons
+	if weaponSets[0].ID == -2 && weaponSets[1].ID == -2 && weaponSets[2].ID == -2 && weaponSets[3].ID == -2 {
+		weaponRes = types.RandommGrizzco
+	} else if weaponSets[0].ID == -1 && weaponSets[1].ID == -1 && weaponSets[2].ID == -1 && weaponSets[3].ID == -1 {
+		weaponRes = types.FourRandom
+	} else if weaponSets[0].ID >= 0 && weaponSets[1].ID >= 0 && weaponSets[2].ID >= 0 && weaponSets[3].ID == -1 {
+		weaponRes = types.SingleRandom
+	} else if weaponSets[0].ID >= 0 && weaponSets[1].ID >= 0 && weaponSets[2].ID >= 0 && weaponSets[3].ID >= 0 {
+		weaponRes = types.Set
+	} else {
+		errs = []error{&types.ErrWeaponsNotFound{}}
+		errs = append(errs, types.NewStackTrace())
+		return nil, errs
+	}
+	if *weapons != weaponRes {
+		return nil, nil
+	}
+	return shift, nil
+}
+
+/*
+FindLatest uses the given iterators to pull the shift data from the various sources based on the parameters, and finds records based on the set filters.
+*/
+func FindLatest(iterators []ShiftIterator, hasEvents types.EventArr, tides types.TideArr, client *http.Client) (map[recordName]*record, []error) {
+	var errs []error
+	scheduleList, errs2 := types.GetSchedules(client)
+	latest := types.ScheduleItem{StartUtc: time.Unix(0, 0)}
+	for i := range scheduleList.Result {
+		if scheduleList.Result[i].StartUtc.Before(time.Now()) && scheduleList.Result[i].StartUtc.After(latest.StartUtc) {
+			latest = scheduleList.Result[i]
+		}
+	}
+	if errs2 != nil {
+		errs = append(errs, errs2...)
+		return nil, errs
+	}
+	records := getLatestRecords()
+	for i := range iterators {
+		addr := iterators[i].GetAddress()
+		shift, errs2 := iterators[i].Next()
+		for errs2 == nil {
+			if shift == nil {
+				break
+			}
+			shift, errs2 = filterSchedule(shift, latest, &scheduleList)
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				return nil, errs
+			}
+			if shift == nil {
+				shift, errs2 = iterators[i].Next()
+				continue
+			}
+			shift, errs2 = filterEvents(hasEvents, shift)
+			if len(errs2) > 0 {
+				errs = append(errs, errs2...)
+				return nil, errs
+			}
+			if shift == nil {
+				shift, errs2 = iterators[i].Next()
+				continue
+			}
+			shift, errs2 = filterTides(tides, shift)
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				return nil, errs
+			}
+			if shift == nil {
+				shift, errs2 = iterators[i].Next()
+				continue
+			}
+			totalEggs := shift.GetTotalEggs()
+			nightCount := 0
+			waveCount := shift.GetWaveCount()
+			waveEggs := shift.GetEggsWaves()
+			waveEvents, _ := shift.GetEvents()
+			waveWaterLevel, _ := shift.GetTides()
+			clearWaves := shift.GetClearWave()
+			var shiftTime time.Time
+			shiftTime, errs2 = shift.GetTime()
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				return nil, errs
+			}
+			for l := 0; l < waveCount && l < clearWaves; l++ {
+				if (*waveEvents)[l] == types.WaterLevels && hasEvents.HasElement(types.WaterLevels) {
+					if records[recordName(string((*waveWaterLevel)[l])+" Normal")] == nil || waveEggs[l] > records[recordName(string((*waveWaterLevel)[l])+" Normal")].RecordAmount {
+						records[recordName(string((*waveWaterLevel)[l])+" Normal")] = &record{
+							Time:         shiftTime,
+							RecordAmount: waveEggs[l],
+							Identifier:   map[string]string{addr: shift.GetIdentifier()},
+						}
+					} else if records[recordName(string((*waveWaterLevel)[l])+" Normal")].Time == shiftTime {
+						records[recordName(string((*waveWaterLevel)[l])+" Normal")].Identifier[addr] = shift.GetIdentifier()
+					}
+					continue
+				}
+				eventStr, errs2 := (*waveEvents)[l].String()
+				if len(errs2) > 0 {
+					errs = append(errs, errs2...)
+					return nil, errs
+				}
+				if hasEvents.HasElement((*waveEvents)[l]) &&
+					tides.HasElement((*waveWaterLevel)[l]) {
+					if records[recordName(string((*waveWaterLevel)[l])+" "+eventStr)] == nil || waveEggs[l] > records[recordName(string((*waveWaterLevel)[l])+" "+eventStr)].RecordAmount {
+						records[recordName(string((*waveWaterLevel)[l])+" "+eventStr)] = &record{
+							Time:         shiftTime,
+							RecordAmount: waveEggs[l],
+							Identifier:   map[string]string{addr: shift.GetIdentifier()},
+						}
+					} else if records[recordName(string((*waveWaterLevel)[l])+" "+eventStr)].Time == shiftTime {
+						records[recordName(string((*waveWaterLevel)[l])+" "+eventStr)].Identifier[addr] = shift.GetIdentifier()
+					}
+				}
+				nightCount++
+			}
+			if clearWaves == 3 {
+				if records[totalGoldenEggs] == nil || records[totalGoldenEggs].RecordAmount < totalEggs {
+					records[totalGoldenEggs] = &record{
+						Time:         shiftTime,
+						RecordAmount: totalEggs,
+						Identifier:   map[string]string{addr: shift.GetIdentifier()},
+					}
+				} else if records[totalGoldenEggs].Time == shiftTime {
+					records[totalGoldenEggs].Identifier[addr] = shift.GetIdentifier()
+				}
+				if nightCount == 2 {
+					if records[totalGoldenEggsTwoNight] == nil || records[totalGoldenEggsTwoNight].RecordAmount < totalEggs {
+						records[totalGoldenEggsTwoNight] = &record{
+							Time:         shiftTime,
+							RecordAmount: totalEggs,
+							Identifier:   map[string]string{addr: shift.GetIdentifier()},
+						}
+					} else if records[totalGoldenEggsTwoNight].Time == shiftTime {
+						records[totalGoldenEggsTwoNight].Identifier[addr] = shift.GetIdentifier()
+					}
+				}
+				if nightCount == 1 {
+					if records[totalGoldenEggsOneNight] == nil || records[totalGoldenEggsOneNight].RecordAmount < totalEggs {
+						records[totalGoldenEggsOneNight] = &record{
+							Time:         shiftTime,
+							RecordAmount: totalEggs,
+							Identifier:   map[string]string{addr: shift.GetIdentifier()},
+						}
+					} else if records[totalGoldenEggsOneNight].Time == shiftTime {
+						records[totalGoldenEggsOneNight].Identifier[addr] = shift.GetIdentifier()
+					}
+				}
+				if nightCount == 0 {
+					if records[totalGoldenEggsNoNight] == nil || records[totalGoldenEggsNoNight].RecordAmount < totalEggs {
+						records[totalGoldenEggsNoNight] = &record{
+							Time:         shiftTime,
+							RecordAmount: totalEggs,
+							Identifier:   map[string]string{addr: shift.GetIdentifier()},
+						}
+					} else if records[totalGoldenEggsNoNight].Time == shiftTime {
+						records[totalGoldenEggsNoNight].Identifier[addr] = shift.GetIdentifier()
 					}
 				}
 			}

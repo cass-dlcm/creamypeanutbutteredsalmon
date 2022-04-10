@@ -36,6 +36,25 @@ func (s Stage) String() string {
 }
 
 /*
+StringJP returns the name of the Stage as the ja-JP locale.
+*/
+func (s Stage) StringJP() string {
+	switch s {
+	case SpawningGrounds:
+		return "シェケナダム"
+	case MaroonersBay:
+		return "難破船ドン・ブラコ"
+	case LostOutpost:
+		return "海上集落シャケト場"
+	case SalmonidSmokeyard:
+		return "トキシラズいぶし工房"
+	case RuinsOfArkPolaris:
+		return "朽ちた箱舟ポラリス"
+	}
+	return ""
+}
+
+/*
 IsElementExists finds whether the given Stage is in the Stage slice.
 */
 func (s *Stage) IsElementExists(arr []Stage) bool {

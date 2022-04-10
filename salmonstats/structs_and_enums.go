@@ -1,10 +1,8 @@
 package salmonstats
 
 import (
-	"errors"
 	"fmt"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core/types"
-	"runtime"
 	"time"
 )
 
@@ -93,15 +91,13 @@ func (s shiftSalmonStats) GetTotalEggs() int {
 	return s.GoldenEggDelivered
 }
 
-func (s shiftSalmonStats) GetStage(schedule types.Schedule) (*types.Stage, []error) {
+func (s shiftSalmonStats) GetStage(schedule *types.Schedule) (*types.Stage, []error) {
 	var stageRes types.Stage
 	var errs []error
 	scheduleTime, err := time.Parse("2006-01-02 15:04:05", s.ScheduleID)
 	if err != nil {
 		errs = []error{err}
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return nil, errs
 	}
 	for i := range schedule.Result {
@@ -121,21 +117,17 @@ func (s shiftSalmonStats) GetStage(schedule types.Schedule) (*types.Stage, []err
 			return &stageRes, nil
 		}
 	}
-	errs = []error{errors.New("stage not found")}
-	buf := make([]byte, 1<<16)
-	stackSize := runtime.Stack(buf, false)
-	errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+	errs = []error{}
+	errs = append(errs, types.NewStackTrace())
 	return nil, errs
 }
 
-func (s shiftSalmonStats) GetWeaponSet(weaponSets types.Schedule) (*types.WeaponSchedule, []error) {
+func (s shiftSalmonStats) GetWeaponSet(weaponSets *types.Schedule) (*types.WeaponSchedule, []error) {
 	var weaponRes types.WeaponSchedule
 	scheduleTime, err := time.Parse("2006-01-02 15:04:05", s.ScheduleID)
 	if err != nil {
 		errs := []error{err}
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return nil, errs
 	}
 	for i := range weaponSets.Result {
@@ -155,10 +147,8 @@ func (s shiftSalmonStats) GetWeaponSet(weaponSets types.Schedule) (*types.Weapon
 			return &weaponRes, nil
 		}
 	}
-	errs := []error{errors.New("WeaponSchedule not found")}
-	buf := make([]byte, 1<<16)
-	stackSize := runtime.Stack(buf, false)
-	errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+	errs := []error{&types.ErrWeaponsNotFound{}}
+	errs = append(errs, types.NewStackTrace())
 	return nil, errs
 }
 
@@ -181,10 +171,8 @@ func (s shiftSalmonStats) GetEvents() (*types.EventArr, []error) {
 		case 6:
 			events = append(events, types.Rush)
 		default:
-			errs := []error{fmt.Errorf("no event found: %d", s.Waves[i].EventID)}
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs := []error{&types.ErrIntEventNotFound{Event: s.Waves[i].EventID}}
+			errs = append(errs, types.NewStackTrace())
 			return nil, errs
 		}
 	}
@@ -202,10 +190,8 @@ func (s shiftSalmonStats) GetTides() (*types.TideArr, []error) {
 		case 3:
 			tides = append(tides, types.Ht)
 		default:
-			errs := []error{fmt.Errorf("no tide found: %d", s.Waves[i].WaterID)}
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs := []error{&types.ErrIntTideNotFound{Tide: s.Waves[i].WaterID}}
+			errs = append(errs, types.NewStackTrace())
 			return nil, errs
 		}
 	}
@@ -228,14 +214,12 @@ func (s shiftSalmonStats) GetTime() (time.Time, []error) {
 	startTime, err := time.Parse("2006-01-02 15:04:05", s.StartAt)
 	if err != nil {
 		errs := []error{err}
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return time.Time{}, errs
 	}
 	return startTime.Local(), nil
 }
 
-func (s shiftSalmonStats) GetIdentifier(server string) string {
-	return fmt.Sprintf("%sresults/%d/", server, s.ID)
+func (s shiftSalmonStats) GetIdentifier() string {
+	return fmt.Sprintf("results/%d/", s.ID)
 }

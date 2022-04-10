@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"compress/gzip"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core/types"
@@ -281,29 +280,14 @@ func (e *event) ToEvent() types.Event {
 	return -1
 }
 
-func (e *event) UnmarshalJSON(b []byte) error {
-	// Define a secondary type to avoid ending up with a recursive call to json.Unmarshal
-	type E event
-	r := (*E)(e)
-	err := json.Unmarshal(b, &r)
-	if err != nil {
-		return err
-	}
-	switch *e {
-	case griller, fog, cohockCharge, goldieSeeking, mothership, waterLevelsEvent, rush:
-		return nil
-	}
-	return errors.New("Invalid event. Got: " + fmt.Sprint(e))
-}
-
 const (
 	ht = "high"
 	lt = "low"
 	nt = "normal"
 )
 
-func (s *shiftSplatnet) GetIdentifier(_ string) string {
-	return fmt.Sprintf("https://app.splatoon2.nintendo.net/api/coop_results/%d", s.JobID)
+func (s *shiftSplatnet) GetIdentifier() string {
+	return fmt.Sprintf("%d", s.JobID)
 }
 
 type shiftSplatnetIterator struct {
@@ -342,7 +326,7 @@ func (s *shiftSplatnetIterator) Next() (shift core.Shift, errs []error) {
 }
 
 func (*shiftSplatnetIterator) GetAddress() string {
-	return ""
+	return "https://app.splatoon2.nintendo.net/api/coop_results/"
 }
 
 func (s *shiftSplatnet) GetClearWave() int {

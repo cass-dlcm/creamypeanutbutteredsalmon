@@ -3,9 +3,7 @@ package types
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"runtime"
 	"time"
 )
 
@@ -13,23 +11,25 @@ import (
 Schedule is a struct of all the Salmon Run rotations since the game's launch.
 */
 type Schedule struct {
-	Result []struct {
-		Start    string    `json:"start"`
-		StartUtc time.Time `json:"start_utc"`
-		StartT   int       `json:"start_t"`
-		End      string    `json:"end"`
-		EndUtc   time.Time `json:"end_utc"`
-		EndT     int       `json:"end_t"`
-		Stage    struct {
-			Image string `json:"image"`
-			Name  string `json:"name"`
-		} `json:"stage"`
-		Weapons []struct {
-			ID    int    `json:"id"`
-			Image string `json:"image"`
-			Name  string `json:"name"`
-		} `json:"weapons"`
-	} `json:"result"`
+	Result []ScheduleItem `json:"result"`
+}
+
+type ScheduleItem struct {
+	Start    string    `json:"start"`
+	StartUtc time.Time `json:"start_utc"`
+	StartT   int       `json:"start_t"`
+	End      string    `json:"end"`
+	EndUtc   time.Time `json:"end_utc"`
+	EndT     int       `json:"end_t"`
+	Stage    struct {
+		Image string `json:"image"`
+		Name  string `json:"name"`
+	} `json:"stage"`
+	Weapons []struct {
+		ID    int    `json:"id"`
+		Image string `json:"image"`
+		Name  string `json:"name"`
+	} `json:"weapons"`
 }
 
 /*
@@ -43,25 +43,19 @@ func GetSchedules(client *http.Client) (Schedule, []error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, NewStackTrace())
 		return Schedule{}, errs
 	}
 	resp, err := client.Do(req)
 	if err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, NewStackTrace())
 		return Schedule{}, errs
 	}
 	data := Schedule{}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, NewStackTrace())
 		return Schedule{}, errs
 	}
 	return data, nil

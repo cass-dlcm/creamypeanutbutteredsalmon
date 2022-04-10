@@ -1,10 +1,8 @@
 package statink
 
 import (
-	"errors"
 	"fmt"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core/types"
-	"runtime"
 	"time"
 )
 
@@ -134,7 +132,7 @@ func (s *shiftStatInk) GetTotalEggs() int {
 	return sum
 }
 
-func (s *shiftStatInk) GetStage(_ types.Schedule) (*types.Stage, []error) {
+func (s *shiftStatInk) GetStage(_ *types.Schedule) (*types.Stage, []error) {
 	var stageRes types.Stage
 	switch s.Stage.Key {
 	case "dam":
@@ -148,16 +146,14 @@ func (s *shiftStatInk) GetStage(_ types.Schedule) (*types.Stage, []error) {
 	case "tokishirazu":
 		stageRes = types.SalmonidSmokeyard
 	default:
-		errs := []error{fmt.Errorf("stage not found: %s", s.Stage.Key)}
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs := []error{&types.ErrStrStageNotFound{s.Stage.Key}}
+		errs = append(errs, types.NewStackTrace())
 		return nil, errs
 	}
 	return &stageRes, nil
 }
 
-func (s *shiftStatInk) GetWeaponSet(weaponSets types.Schedule) (*types.WeaponSchedule, []error) {
+func (s *shiftStatInk) GetWeaponSet(weaponSets *types.Schedule) (*types.WeaponSchedule, []error) {
 	var weaponRes types.WeaponSchedule
 	for i := range weaponSets.Result {
 		if weaponSets.Result[i].StartUtc.Equal(s.ShiftStartAt.Iso8601) {
@@ -176,10 +172,8 @@ func (s *shiftStatInk) GetWeaponSet(weaponSets types.Schedule) (*types.WeaponSch
 			return &weaponRes, nil
 		}
 	}
-	errs := []error{errors.New("WeaponSchedule not found")}
-	buf := make([]byte, 1<<16)
-	stackSize := runtime.Stack(buf, false)
-	errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+	errs := []error{&types.ErrWeaponsNotFound{}}
+	errs = append(errs, types.NewStackTrace())
 	return nil, errs
 }
 
@@ -210,10 +204,8 @@ func (s *shiftStatInk) GetTides() (*types.TideArr, []error) {
 		case "high":
 			tides = append(tides, types.Ht)
 		default:
-			errs := []error{fmt.Errorf("tide not found: %s", s.Waves[i].WaterLevel.Key)}
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs := []error{&types.ErrStrTideNotFound{Tide: s.Waves[i].WaterLevel.Key}}
+			errs = append(errs, types.NewStackTrace())
 			return nil, errs
 		}
 	}
@@ -236,6 +228,6 @@ func (s *shiftStatInk) GetTime() (time.Time, []error) {
 	return s.StartAt.Iso8601.Local(), nil
 }
 
-func (s *shiftStatInk) GetIdentifier(server string) string {
-	return fmt.Sprintf("%ssalmon/%d", server, s.ID)
+func (s *shiftStatInk) GetIdentifier() string {
+	return fmt.Sprintf("%d", s.ID)
 }

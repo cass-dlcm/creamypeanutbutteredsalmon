@@ -14,7 +14,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"runtime"
 	"strings"
 )
 
@@ -26,9 +25,7 @@ func setLanguage() (string, []error) {
 	// Taking input from user
 	if _, err := fmt.Scanln(&locale); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return "", errs
 	}
 	languageList := map[string]string{
@@ -50,9 +47,7 @@ func setLanguage() (string, []error) {
 
 		if _, err := fmt.Scanln(&locale); err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			return "", errs
 		}
 
@@ -61,8 +56,15 @@ func setLanguage() (string, []error) {
 	return locale, nil
 }
 
-func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server) ([]types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []*types.Server, bool, []*types.Server, string, []error) {
+type errStrWeaponsNotFound struct{ weapons string }
+
+func (err errStrWeaponsNotFound) Error() string {
+	return fmt.Sprintf("no weaponschedule found: %s", err.weapons)
+}
+
+func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server) (bool, []types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []*types.Server, bool, []*types.Server, string, []error) {
 	errs := []error{}
+	mostRecentBool := flag.Bool("recent", false, "To calculate personal bests for the most recent rotation only.")
 	stagesStr := flag.String("stage", "spawning_grounds marooners_bay lost_outpost salmonid_smokeyard ruins_of_ark_polaris", "To set a specific set of stages.")
 	hasEventsStr := flag.String("event", "water_levels rush fog goldie_seeking griller cohock_charge mothership", "To set a specific set of events.")
 	hasTides := flag.String("tide", "LT NT HT", "To set a specific set of tides.")
@@ -72,6 +74,15 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 	salmonStats := flag.String("salmonstats", "", "To read data from salmon-stats. Use \"official\" for the server at salmon-stats-api.yuki.games")
 	outFile := flag.String("outfile", "", "To output data to a JSON file.")
 	flag.Parse()
+
+	if *mostRecentBool && *stagesStr != "spawning_grounds marooners_bay lost_outpost salmonid_smokeyard ruins_of_ark_polaris" {
+		errs = append(errs, errors.New("Incorrect flags; recent cannot be used with the stages flag"))
+		errs = append(errs, types.NewStackTrace())
+		return false, nil, nil, nil, nil, nil, false, nil, "", errs
+	}
+	if *mostRecentBool && *hasWeapons != "set single_random four_random random_gold" {
+		log.Panicln("Incorrect flags; recent cannot be used with the weapons flag")
+	}
 
 	stages := []types.Stage{}
 	stagesStrArr := strings.Split(*stagesStr, " ")
@@ -89,11 +100,9 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 		case "ruins_of_ark_polaris":
 			stageRes = types.RuinsOfArkPolaris
 		default:
-			errs = append(errs, fmt.Errorf("stage not found: %s\n", stagesStrArr[i]))
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
-			return nil, nil, nil, nil, nil, false, nil, "", errs
+			errs = append(errs, &types.ErrStrStageNotFound{Stage: stagesStrArr[i]})
+			errs = append(errs, types.NewStackTrace())
+			return false, nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 		stages = append(stages, stageRes)
 	}
@@ -103,10 +112,8 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 		eventRes, errs2 := types.StringToEvent(eventsStrArr[i])
 		if errs2 != nil {
 			errs = append(errs, errs2...)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
-			return nil, nil, nil, nil, nil, false, nil, "", errs
+			errs = append(errs, types.NewStackTrace())
+			return false, nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 		hasEvents = append(hasEvents, *eventRes)
 	}
@@ -118,11 +125,9 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 		case string(types.RandommGrizzco), string(types.SingleRandom), string(types.FourRandom), string(types.Set):
 			weaponVal = types.WeaponSchedule(weaponsStrArr[i])
 		default:
-			errs = append(errs, fmt.Errorf("weapon not found: %s\n", weaponsStrArr[i]))
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
-			return nil, nil, nil, nil, nil, false, nil, "", errs
+			errs = append(errs, &errStrWeaponsNotFound{weapons: weaponsStrArr[i]})
+			errs = append(errs, types.NewStackTrace())
+			return false, nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 		weapons = append(weapons, weaponVal)
 	}
@@ -135,11 +140,9 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 		case types.Ht, types.Lt, types.Nt:
 			tides = append(tides, inTide)
 		default:
-			errs = append(errs, fmt.Errorf("tide not found: %s\n", tidesStrArr[i]))
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
-			return nil, nil, nil, nil, nil, false, nil, "", errs
+			errs = append(errs, &types.ErrStrTideNotFound{tidesStrArr[i]})
+			errs = append(errs, types.NewStackTrace())
+			return false, nil, nil, nil, nil, nil, false, nil, "", errs
 		}
 	}
 
@@ -163,7 +166,7 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 		}
 	}
 
-	return stages, hasEvents, tides, weapons, statInkServers, *useSplatnet, salmonStatsServers, *outFile, nil
+	return *mostRecentBool, stages, hasEvents, tides, weapons, statInkServers, *useSplatnet, salmonStatsServers, *outFile, nil
 }
 
 type config struct {
@@ -231,7 +234,7 @@ func main() {
 			return http.ErrUseLastResponse
 		},
 	}
-	stages, hasEvents, tides, weapons, statInkServers, useSplatnet, salmonStatsServers, outFile, errs := getFlags(configValues.StatinkServers, configValues.SalmonstatsServers)
+	recent, stages, hasEvents, tides, weapons, statInkServers, useSplatnet, salmonStatsServers, outFile, errs := getFlags(configValues.StatinkServers, configValues.SalmonstatsServers)
 	if len(errs) > 0 {
 		log.Panicln(errs)
 	}
@@ -298,12 +301,34 @@ func main() {
 		}
 		iterators = append(iterators, iter)
 	}
+	if recent {
+		records, errs := core.FindLatest(iterators, hasEvents, tides, client)
+		if errs != nil {
+			log.Panicln(errs)
+		}
+		if outFile != "" {
+			f, err := os.OpenFile(outFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+			if err != nil {
+				log.Panicln(err)
+			}
+			encoder := json.NewEncoder(f)
+			encoder.SetIndent("", "    ")
+			if err := encoder.Encode(records); err != nil {
+				log.Panicln(err)
+			}
+			return
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(records); err != nil {
+			log.Panicln(err)
+		}
+		return
+	}
 	records, errs := core.FindRecords(iterators, stages, hasEvents, tides, weapons, client)
 	if errs != nil {
 		log.Panicln(errs)
 	}
 	if outFile != "" {
-		f, err := os.OpenFile("records.json", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		f, err := os.OpenFile(outFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
 			log.Panicln(err)
 		}

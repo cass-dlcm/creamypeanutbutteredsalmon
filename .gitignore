@@ -5,3 +5,4 @@ salmonstats_shifts
 dist/
 shifts.jl.gz
 records.json
+records_latest.json

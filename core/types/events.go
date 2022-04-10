@@ -1,10 +1,5 @@
 package types
 
-import (
-	"fmt"
-	"runtime"
-)
-
 /*
 Event is an integer enum for denoting the event of a wave.
 */
@@ -44,10 +39,8 @@ func (e Event) String() (string, []error) {
 	case Mothership:
 		return "Mothership", nil
 	}
-	errs = append(errs, fmt.Errorf("event not found: %d", e))
-	buf := make([]byte, 1<<16)
-	stackSize := runtime.Stack(buf, false)
-	errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+	errs = append(errs, &ErrIntEventNotFound{Event: int(e)})
+	errs = append(errs, NewStackTrace())
 	return "", errs
 }
 
@@ -72,10 +65,8 @@ func StringToEvent(inStr string) (*Event, []error) {
 	case "mothership":
 		eventRes = Mothership
 	default:
-		errs := []error{fmt.Errorf("event not found: %s", inStr)}
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs := []error{&ErrStrEventNotFound{Event: inStr}}
+		errs = append(errs, NewStackTrace())
 		return nil, errs
 	}
 	return &eventRes, nil

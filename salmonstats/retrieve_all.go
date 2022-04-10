@@ -13,7 +13,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"runtime"
 	"time"
 )
 
@@ -37,9 +36,7 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			return false, errs
 		}
 		query := req.URL.Query()
@@ -55,9 +52,7 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 		resp, err := client.Do(req)
 		if err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			return false, errs
 		}
 
@@ -69,9 +64,7 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 		var data shiftPage
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			return false, errs
 		}
 
@@ -80,32 +73,24 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 				err := os.Mkdir("salmonstats_shifts", os.ModePerm)
 				if err != nil {
 					errs = append(errs, err)
-					buf := make([]byte, 1<<16)
-					stackSize := runtime.Stack(buf, false)
-					errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+					errs = append(errs, types.NewStackTrace())
 					return false, errs
 				}
 			}
 			fileText, err := json.Marshal(data.Results[i])
 			if err != nil {
 				errs = append(errs, err)
-				buf := make([]byte, 1<<16)
-				stackSize := runtime.Stack(buf, false)
-				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+				errs = append(errs, types.NewStackTrace())
 				return false, errs
 			}
 			if _, err := jsonLinesWriter.Write(fileText); err != nil {
 				errs = append(errs, err)
-				buf := make([]byte, 1<<16)
-				stackSize := runtime.Stack(buf, false)
-				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+				errs = append(errs, types.NewStackTrace())
 				return false, errs
 			}
 			if _, err := jsonLinesWriter.Write([]byte("\n")); err != nil {
 				errs = append(errs, err)
-				buf := make([]byte, 1<<16)
-				stackSize := runtime.Stack(buf, false)
-				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+				errs = append(errs, types.NewStackTrace())
 				return false, errs
 			}
 		}
@@ -116,16 +101,12 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 			f, err := os.Create(fmt.Sprintf("salmonstats_shifts/%s.jl.gz", server.ShortName))
 			if err != nil {
 				errs = append(errs, err)
-				buf := make([]byte, 1<<16)
-				stackSize := runtime.Stack(buf, false)
-				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+				errs = append(errs, types.NewStackTrace())
 				return errs
 			}
 			if err := f.Close(); err != nil {
 				errs = append(errs, err)
-				buf := make([]byte, 1<<16)
-				stackSize := runtime.Stack(buf, false)
-				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+				errs = append(errs, types.NewStackTrace())
 				return errs
 			}
 		}
@@ -139,18 +120,14 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 			errs = append(errs, err)
 		}
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return errs
 	}
 	count := 0
 	gzRead, err := gzip.NewReader(f)
 	if err != nil && !errors.Is(err, io.EOF) {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		if err := f.Close(); err != nil {
 			errs = append(errs, err)
 		}
@@ -168,9 +145,7 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 			count++
 			if _, err := jsonLinesWriter.Write([]byte(bufScan.Text())); err != nil {
 				errs = append(errs, err)
-				buf := make([]byte, 1<<16)
-				stackSize := runtime.Stack(buf, false)
-				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+				errs = append(errs, types.NewStackTrace())
 				if err := f.Close(); err != nil {
 					errs = append(errs, err)
 				}
@@ -187,9 +162,7 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 			}
 			if _, err := jsonLinesWriter.Write([]byte("\n")); err != nil {
 				errs = append(errs, err)
-				buf := make([]byte, 1<<16)
-				stackSize := runtime.Stack(buf, false)
-				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+				errs = append(errs, types.NewStackTrace())
 				if err := f.Close(); err != nil {
 					errs = append(errs, err)
 				}
@@ -207,9 +180,7 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 		}
 		if err := gzRead.Close(); err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			if err := jsonLinesWriter.Close(); err != nil {
 				errs = append(errs, err)
 			}
@@ -224,9 +195,7 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 	}
 	if err := f.Close(); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		if err := jsonLinesWriter.Close(); err != nil {
 			errs = append(errs, err)
 		}
@@ -247,9 +216,7 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 	}
 	if err := jsonLinesWriter.Close(); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		if err := file.Close(); err != nil {
 			errs = append(errs, err)
 		}
@@ -257,23 +224,17 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 	}
 	if err := file.Close(); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return errs
 	}
 	if err := os.Remove(fmt.Sprintf("salmonstats_shifts/%s.jl.gz", server.ShortName)); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return errs
 	}
 	if err := os.Rename(fmt.Sprintf("salmonstats_shifts/%s_out.jl.gz", server.ShortName), fmt.Sprintf("salmonstats_shifts/%s.jl.gz", server.ShortName)); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return errs
 	}
 	return nil
@@ -291,9 +252,7 @@ func (s *shiftSalmonStatsIterator) Next() (shift core.Shift, errs []error) {
 	if s.buffRead.Scan() {
 		if err := json.Unmarshal([]byte(s.buffRead.Text()), &data); err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			if err := s.f.Close(); err != nil {
 				errs = append(errs, err)
 			}
@@ -319,22 +278,18 @@ LoadFromFileIterator creates a core.ShiftIterator that iterates over the salmon-
 */
 func LoadFromFileIterator(server types.Server) (core.ShiftIterator, []error) {
 	errs := []error{}
-	iter := &shiftSalmonStatsIterator{serverAddr: server.Address}
+	iter := &shiftSalmonStatsIterator{serverAddr: fmt.Sprintf("%sresults/", server.Address)}
 	var err error
 	iter.f, err = os.Open(fmt.Sprintf("salmonstats_shifts/%s.jl.gz", server.ShortName))
 	if err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return nil, errs
 	}
 	iter.gzipReader, err = gzip.NewReader(iter.f)
 	if err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return nil, errs
 	}
 	iter.buffRead = bufio.NewScanner(iter.gzipReader)

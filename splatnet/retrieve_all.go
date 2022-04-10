@@ -8,12 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core"
+	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core/types"
 	"github.com/cass-dlcm/splatnetiksm"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"runtime"
 	"time"
 )
 
@@ -48,9 +48,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return &sessionToken, &cookie, &userID, errs
 	}
 
@@ -71,9 +69,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 	resp, err := client.Do(req)
 	if err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return &sessionToken, &cookie, &userID, errs
 	}
 
@@ -91,16 +87,12 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 			f, err := os.Create("shifts.jl.gz")
 			if err != nil {
 				errs = append(errs, err)
-				buf := make([]byte, 1<<16)
-				stackSize := runtime.Stack(buf, false)
-				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+				errs = append(errs, types.NewStackTrace())
 				return &sessionToken, &cookie, &userID, errs
 			}
 			if err := f.Close(); err != nil {
 				errs = append(errs, err)
-				buf := make([]byte, 1<<16)
-				stackSize := runtime.Stack(buf, false)
-				errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+				errs = append(errs, types.NewStackTrace())
 				return &sessionToken, &cookie, &userID, errs
 			}
 		}
@@ -108,9 +100,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 	fileIn, err := os.Open("shifts.jl.gz")
 	if err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return &sessionToken, &cookie, &userID, errs
 	}
 	gzRead, err := gzip.NewReader(fileIn)
@@ -118,9 +108,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 	if err != nil {
 		if !errors.Is(err, io.EOF) {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			if err := fileIn.Close(); err != nil {
 				errs = append(errs, err)
 			}
@@ -132,9 +120,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 	file, err := os.Create("shifts_out.jl.gz")
 	if err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return &sessionToken, &cookie, &userID, errs
 	}
 	jsonLinesWriter = gzip.NewWriter(file)
@@ -144,9 +130,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 		text = bufScan.Text()
 		if _, err := jsonLinesWriter.Write([]byte(text)); err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			if err := fileIn.Close(); err != nil {
 				errs = append(errs, err)
 			}
@@ -163,9 +147,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 		}
 		if _, err := jsonLinesWriter.Write([]byte("\n")); err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			if err := fileIn.Close(); err != nil {
 				errs = append(errs, err)
 			}
@@ -213,12 +195,13 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 	}
 
 	if data.Code != nil {
-		newSessionToken, newCookie, errs2 := splatnetiksm.GenNewCookie(locale, sessionToken, "blank", client)
+		newSessionToken, newCookie, errs2 := splatnetiksm.GenNewCookie(locale, sessionToken, "auth", client)
 		if len(errs2) > 0 {
 			errs = append(errs, errs2...)
+		} else {
+			sessionToken = *newSessionToken
+			cookie = *newCookie
 		}
-		sessionToken = *newSessionToken
-		cookie = *newCookie
 		if err := fileIn.Close(); err != nil {
 			errs = append(errs, err)
 		}
@@ -244,9 +227,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 
 	if err := fileIn.Close(); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		if err := jsonLinesWriter.Close(); err != nil {
 			errs = append(errs, err)
 		}
@@ -258,9 +239,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 	if !eof {
 		if err := gzRead.Close(); err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			if err := jsonLinesWriter.Close(); err != nil {
 				errs = append(errs, err)
 			}
@@ -277,9 +256,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 	if json.Valid([]byte(text)) {
 		if err := json.Unmarshal([]byte(text), shift); err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			if err := jsonLinesWriter.Close(); err != nil {
 				errs = append(errs, err)
 			}
@@ -298,9 +275,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 		fileText, err := json.Marshal(data.Results[i])
 		if err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			if err := jsonLinesWriter.Close(); err != nil {
 				errs = append(errs, err)
 			}
@@ -311,9 +286,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 		}
 		if _, err := jsonLinesWriter.Write(fileText); err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			if err := jsonLinesWriter.Close(); err != nil {
 				errs = append(errs, err)
 			}
@@ -324,9 +297,7 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 		}
 		if _, err := jsonLinesWriter.Write([]byte("\n")); err != nil {
 			errs = append(errs, err)
-			buf := make([]byte, 1<<16)
-			stackSize := runtime.Stack(buf, false)
-			errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+			errs = append(errs, types.NewStackTrace())
 			if err := jsonLinesWriter.Close(); err != nil {
 				errs = append(errs, err)
 			}
@@ -339,15 +310,11 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 
 	if err := jsonLinesWriter.Close(); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 	}
 	if err := file.Close(); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 	}
 	if len(errs) > 0 {
 		return &sessionToken, &cookie, &userID, errs
@@ -355,16 +322,12 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 
 	if err := os.Remove("shifts.jl.gz"); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return &sessionToken, &cookie, &userID, errs
 	}
 	if err := os.Rename("shifts_out.jl.gz", "shifts.jl.gz"); err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return &sessionToken, &cookie, &userID, errs
 	}
 	return &sessionToken, &cookie, &userID, nil
@@ -383,17 +346,13 @@ func LoadFromFileIterator() (core.ShiftIterator, []error) {
 			return nil, nil
 		}
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return nil, errs
 	}
 	returnVal.gzipReader, err = gzip.NewReader(returnVal.f)
 	if err != nil {
 		errs = append(errs, err)
-		buf := make([]byte, 1<<16)
-		stackSize := runtime.Stack(buf, false)
-		errs = append(errs, fmt.Errorf("%s", buf[0:stackSize]))
+		errs = append(errs, types.NewStackTrace())
 		return nil, errs
 	}
 	returnVal.buffRead = bufio.NewScanner(returnVal.gzipReader)
