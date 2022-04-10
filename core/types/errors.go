@@ -42,3 +42,9 @@ func NewStackTrace() *StackTrace {
 func (st *StackTrace) Error() string {
 	return string(st.buf[0:st.stackSize])
 }
+
+type ErrStrWeaponsNotFound struct{ Weapons string }
+
+func (err ErrStrWeaponsNotFound) Error() string {
+	return fmt.Sprintf("no weaponschedule found: %s", err.Weapons)
+}

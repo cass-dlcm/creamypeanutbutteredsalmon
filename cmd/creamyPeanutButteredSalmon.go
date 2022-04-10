@@ -56,12 +56,6 @@ func setLanguage() (string, []error) {
 	return locale, nil
 }
 
-type errStrWeaponsNotFound struct{ weapons string }
-
-func (err errStrWeaponsNotFound) Error() string {
-	return fmt.Sprintf("no weaponschedule found: %s", err.weapons)
-}
-
 func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server) (bool, []types.Stage, []types.Event, []types.Tide, []types.WeaponSchedule, []*types.Server, bool, []*types.Server, string, []error) {
 	errs := []error{}
 	mostRecentBool := flag.Bool("recent", false, "To calculate personal bests for the most recent rotation only.")
@@ -76,7 +70,7 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 	flag.Parse()
 
 	if *mostRecentBool && *stagesStr != "spawning_grounds marooners_bay lost_outpost salmonid_smokeyard ruins_of_ark_polaris" {
-		errs = append(errs, errors.New("Incorrect flags; recent cannot be used with the stages flag"))
+		errs = append(errs, errors.New("incorrect flags; recent cannot be used with the stages flag"))
 		errs = append(errs, types.NewStackTrace())
 		return false, nil, nil, nil, nil, nil, false, nil, "", errs
 	}
@@ -125,7 +119,7 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 		case string(types.RandommGrizzco), string(types.SingleRandom), string(types.FourRandom), string(types.Set):
 			weaponVal = types.WeaponSchedule(weaponsStrArr[i])
 		default:
-			errs = append(errs, &errStrWeaponsNotFound{weapons: weaponsStrArr[i]})
+			errs = append(errs, &types.ErrStrWeaponsNotFound{Weapons: weaponsStrArr[i]})
 			errs = append(errs, types.NewStackTrace())
 			return false, nil, nil, nil, nil, nil, false, nil, "", errs
 		}
@@ -140,7 +134,7 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 		case types.Ht, types.Lt, types.Nt:
 			tides = append(tides, inTide)
 		default:
-			errs = append(errs, &types.ErrStrTideNotFound{tidesStrArr[i]})
+			errs = append(errs, &types.ErrStrTideNotFound{Tide: tidesStrArr[i]})
 			errs = append(errs, types.NewStackTrace())
 			return false, nil, nil, nil, nil, nil, false, nil, "", errs
 		}
