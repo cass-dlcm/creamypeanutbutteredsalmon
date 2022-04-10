@@ -183,11 +183,11 @@ func (s *shiftStatInk) GetEvents() (*types.EventArr, []error) {
 		if s.Waves[i].KnownOccurrence == nil {
 			events = append(events, types.WaterLevels)
 		} else {
-			event, errs := types.StringToEvent(s.Waves[i].KnownOccurrence.Key)
-			if errs != nil {
-				return nil, errs
+			event := types.StringToEvent(s.Waves[i].KnownOccurrence.Key)
+			if event == -1 {
+				return nil, []error{&types.ErrStrEventNotFound{Event: s.Waves[i].KnownOccurrence.Key}, types.NewStackTrace()}
 			}
-			events = append(events, *event)
+			events = append(events, event)
 		}
 	}
 	return &events, nil

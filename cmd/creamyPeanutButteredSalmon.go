@@ -103,12 +103,12 @@ func getFlags(statInkURLConf []*types.Server, salmonStatsURLConf []*types.Server
 	var hasEvents []types.Event
 	eventsStrArr := strings.Split(*hasEventsStr, " ")
 	for i := range eventsStrArr {
-		eventRes, errs2 := types.StringToEvent(eventsStrArr[i])
-		if errs2 != nil {
-			errs = append(errs, append(errs2, types.NewStackTrace())...)
+		eventRes := types.StringToEvent(eventsStrArr[i])
+		if eventRes == -1 {
+			errs = append(errs, &types.ErrStrEventNotFound{Event: eventsStrArr[i]}, types.NewStackTrace())
 			return false, nil, nil, nil, nil, nil, false, nil, "", errs
 		}
-		hasEvents = append(hasEvents, *eventRes)
+		hasEvents = append(hasEvents, eventRes)
 	}
 	var weapons []types.WeaponSchedule
 	weaponsStrArr := strings.Split(*hasWeapons, " ")

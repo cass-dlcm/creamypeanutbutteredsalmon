@@ -144,11 +144,11 @@ func (d *DBShiftIterator) Next() (Shift, []error) {
 	}
 	d.id++
 	for i := range eventStrs {
-		event := types.DisplayStringToEvent(eventStrs[i])
-		if event == nil {
+		event := types.StringToEvent(eventStrs[i])
+		if event == -1 {
 			return nil, []error{&types.ErrStrEventNotFound{Event: eventStrs[i]}, types.NewStackTrace()}
 		}
-		shift.events[i] = *event
+		shift.events[i] = event
 	}
 	if shift.clearWave < 3 {
 		shift.eggsWaves = shift.eggsWaves[0:shift.clearWave]

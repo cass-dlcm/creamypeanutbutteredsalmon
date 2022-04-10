@@ -65,29 +65,24 @@ func DisplayStringToEvent(inStr string) *Event {
 /*
 StringToEvent returns a pointer to an Event if the Event matches the inputted string, otherwise it returns an error.
 */
-func StringToEvent(inStr string) (*Event, []error) {
-	var eventRes Event
+func StringToEvent(inStr string) Event {
 	switch inStr {
 	case "water_levels":
-		eventRes = WaterLevels
+		return WaterLevels
 	case "rush":
-		eventRes = Rush
+		return Rush
 	case "fog":
-		eventRes = Fog
+		return Fog
 	case "goldie_seeking":
-		eventRes = GoldieSeeking
+		return GoldieSeeking
 	case "griller":
-		eventRes = Griller
+		return Griller
 	case "cohock_charge":
-		eventRes = CohockCharge
+		return CohockCharge
 	case "mothership":
-		eventRes = Mothership
-	default:
-		errs := []error{&ErrStrEventNotFound{Event: inStr}}
-		errs = append(errs, NewStackTrace())
-		return nil, errs
+		return Mothership
 	}
-	return &eventRes, nil
+	return -1
 }
 
 /*
