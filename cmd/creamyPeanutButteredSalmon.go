@@ -17,7 +17,7 @@ import (
 	"os"
 	"strings"
 
-	_ "github.com/glebarez/go-sqlite"
+	_ "modernc.org/sqlite"
 )
 
 func setLanguage() (string, []error) {
