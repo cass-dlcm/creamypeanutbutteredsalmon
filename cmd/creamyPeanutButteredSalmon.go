@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -15,6 +16,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	_ "github.com/glebarez/go-sqlite"
 )
 
 func setLanguage() (string, []error) {
@@ -248,9 +251,14 @@ func main() {
 			log.Panicln(err)
 		}
 	}
-	iterators := []core.ShiftIterator{}
+	dbType := "sqlite"
+	db, err := sql.Open(dbType, "cpbs.sqlite")
+	if err != nil {
+		log.Panicln(err)
+	}
+	iterators := []core.ShiftIterator{core.NewDBShiftIterator(db, dbType)}
 	if useSplatnet {
-		sessionToken, cookie, userID, errs := splatnet.GetAllShifts(configValues.SessionToken, configValues.Cookie, configValues.UserLang, configValues.UserId, client, outFile == "")
+		sessionToken, cookie, userID, errs := splatnet.GetAllShifts(db, dbType, configValues.SessionToken, configValues.Cookie, configValues.UserLang, configValues.UserId, client, outFile == "")
 		if errs != nil {
 			log.Panicln(errs)
 		}
@@ -262,24 +270,14 @@ func main() {
 		if err := os.WriteFile("config.json", configJson, 0600); err != nil {
 			log.Panicln(err)
 		}
-		iter, errs := splatnet.LoadFromFileIterator()
-		if errs != nil {
-			log.Panicln(errs)
-		}
-		iterators = append(iterators, iter)
 	}
 	for i := range salmonStatsServers {
-		if errs := salmonstats.GetAllShifts(configValues.UserId, *salmonStatsServers[i], client, outFile == ""); len(errs) > 0 {
+		if errs := salmonstats.GetAllShifts(db, dbType, configValues.UserId, *salmonStatsServers[i], client, outFile == ""); len(errs) > 0 {
 			log.Panicln(errs)
 		}
-		iter, errs := salmonstats.LoadFromFileIterator(*salmonStatsServers[i])
-		if len(errs) > 0 {
-			log.Panicln(errs)
-		}
-		iterators = append(iterators, iter)
 	}
 	for i := range statInkServers {
-		if errs := statink.GetAllShifts(statInkServers[i], client, outFile == ""); errs != nil {
+		if errs := statink.GetAllShifts(db, dbType, statInkServers[i], client, outFile == ""); errs != nil {
 			log.Panicln(errs)
 		}
 		configJson, err = json.MarshalIndent(configValues, "", "    ")
@@ -289,11 +287,6 @@ func main() {
 		if err := os.WriteFile("config.json", configJson, 0600); err != nil {
 			log.Panicln(err)
 		}
-		iter, errs := statink.LoadFromFileIterator(*statInkServers[i])
-		if errs != nil {
-			log.Panicln(errs)
-		}
-		iterators = append(iterators, iter)
 	}
 	if recent {
 		records, errs := core.FindLatest(iterators, hasEvents, tides, client)

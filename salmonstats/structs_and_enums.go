@@ -220,6 +220,6 @@ func (s shiftSalmonStats) GetTime() (time.Time, []error) {
 	return startTime.Local(), nil
 }
 
-func (s shiftSalmonStats) GetIdentifier() string {
-	return fmt.Sprintf("results/%d/", s.ID)
+func (s shiftSalmonStats) GetIdentifier(server types.Server) string {
+	return fmt.Sprintf("%sresults/%d/", server.Address, s.ID)
 }

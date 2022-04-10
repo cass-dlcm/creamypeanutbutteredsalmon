@@ -1,25 +1,29 @@
 package statink
 
 import (
-	"bufio"
-	"compress/gzip"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core/types"
-	"io"
 	"log"
 	"net/http"
-	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
 /*
 GetAllShifts downloads every shiftStatInk from the provided stat.ink server and saves it to a gzipped jsonlines file.
 */
-func GetAllShifts(statInkServer *types.Server, client *http.Client, quiet bool) (errs []error) {
+func GetAllShifts(db *sql.DB, dbType string, statInkServer *types.Server, client *http.Client, quiet bool) (errs []error) {
+	schedule, errs2 := types.GetSchedules(client)
+	if errs2 != nil {
+		errs = append(errs, errs2...)
+		errs = append(errs, types.NewStackTrace())
+		return errs
+	}
 	if statInkServer.APIKey == "" {
 		for len(statInkServer.APIKey) != 43 {
 			log.Println("Please get your stat.ink API key, paste it here, and press enter: ")
@@ -30,15 +34,6 @@ func GetAllShifts(statInkServer *types.Server, client *http.Client, quiet bool) 
 			}
 		}
 	}
-	var jsonLinesWriter *gzip.Writer
-	file, err := os.Create(fmt.Sprintf("statink_shifts/%s_out.jl.gz", statInkServer.ShortName))
-	if err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return errs
-	}
-	jsonLinesWriter = gzip.NewWriter(file)
-	shift := shiftStatInk{}
 	getShift := func(id int) (data []shiftStatInk, errs []error) {
 		url := fmt.Sprintf("%suser-salmon", statInkServer.Address)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -69,156 +64,116 @@ func GetAllShifts(statInkServer *types.Server, client *http.Client, quiet bool) 
 			}
 		}()
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			log.Println(resp.Status)
 			errs = append(errs, err)
 			errs = append(errs, types.NewStackTrace())
 			return nil, errs
 		}
+		var highestID int
+		if err := db.QueryRow("SELECT id FROM Shifts ORDER BY id DESC LIMIT 1;").Scan(&highestID); err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				errs = append(errs, err)
+				errs = append(errs, types.NewStackTrace())
+				return nil, errs
+			}
+		}
 		for i := range data {
-			if _, err := os.Stat("statink_shifts"); errors.Is(err, os.ErrNotExist) {
-				if err := os.Mkdir("statink_shifts", os.ModePerm); err != nil {
-					errs = append(errs, err)
-					errs = append(errs, types.NewStackTrace())
-					return nil, errs
+			events, errs2 := data[i].GetEvents()
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				errs = append(errs, types.NewStackTrace())
+				return nil, errs
+			}
+			tides, errs2 := data[i].GetTides()
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				errs = append(errs, types.NewStackTrace())
+				return nil, errs
+			}
+			golden := data[i].GetEggsWaves()
+			totalGolden := data[i].GetTotalEggs()
+			clearWave := data[i].GetClearWave()
+			princess := 0
+			if data[i].MyData.GoldenEggDelivered == totalGolden || (len(data[i].Teammates) > 0 && (data[i].Teammates[0].GoldenEggDelivered == totalGolden || (len(data[i].Teammates) > 1 && (data[i].Teammates[1].GoldenEggDelivered == totalGolden || (len(data[i].Teammates) > 2 && data[i].Teammates[2].GoldenEggDelivered == totalGolden))))) {
+				princess = 1
+			}
+			stage, errs2 := data[i].GetStage(nil)
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				errs = append(errs, types.NewStackTrace())
+				return nil, errs
+			}
+			weaponSet, errs2 := data[i].GetWeaponSet(&schedule)
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				errs = append(errs, types.NewStackTrace())
+				return nil, errs
+			}
+			t, errs2 := data[i].GetTime()
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				errs = append(errs, types.NewStackTrace())
+				return nil, errs
+			}
+			var w1event, w1tide, w2event, w2tide, w3event, w3tide string
+			var w1g, w2g, w3g int
+			if clearWave == 3 {
+				w3event = (*events)[2].EventToKeyString()
+				w3tide = string((*tides)[2])
+				w3g = golden[2]
+			}
+			if clearWave >= 2 {
+				w2event = (*events)[1].EventToKeyString()
+				w2tide = string((*tides)[1])
+				w2g = golden[2]
+			}
+			if clearWave >= 1 {
+				w1event = (*events)[0].EventToKeyString()
+				w1tide = string((*tides)[0])
+				w1g = golden[0]
+			}
+			if dbType == "sqlite" {
+				if err := db.QueryRow("SELECT id FROM Shifts WHERE identifier = ?", data[i].GetIdentifier(*statInkServer)).Scan(&id); err != nil {
+					if !errors.Is(err, sql.ErrNoRows) {
+						errs = append(errs, err)
+						errs = append(errs, types.NewStackTrace())
+						return nil, errs
+					}
+					if _, err := db.Exec("INSERT INTO Shifts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", data[i].GetIdentifier(*statInkServer), w1event, w1tide, w1g, w2event, w2tide, w2g, w3event, w3tide, w3g, clearWave, princess, stage, *weaponSet, t.Unix(), highestID+i+1); err != nil {
+						errs = append(errs, err)
+						errs = append(errs, types.NewStackTrace())
+						return nil, errs
+					}
+				}
+			} else if dbType == "postgresql" {
+				if err := db.QueryRow("SELECT id FROM Shifts WHERE identifier = $1", data[i].GetIdentifier(*statInkServer)).Scan(&id); err != nil {
+					if !errors.Is(err, sql.ErrNoRows) {
+						errs = append(errs, err)
+						errs = append(errs, types.NewStackTrace())
+						return nil, errs
+					}
+					if _, err := db.Exec("INSERT INTO Shifts VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);", data[i].GetIdentifier(*statInkServer), w1event, w1tide, w1g, w2event, w2tide, w2g, w3event, w3tide, w3g, clearWave, princess, stage, *weaponSet, t.Unix(), highestID+i+1); err != nil {
+						errs = append(errs, err)
+						errs = append(errs, types.NewStackTrace())
+						return nil, errs
+					}
 				}
 			}
-			fileText, err := json.Marshal(data[i])
-			if err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				return nil, errs
-			}
-			if _, err := jsonLinesWriter.Write(fileText); err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				return nil, errs
-			}
-			if _, err := jsonLinesWriter.Write([]byte("\n")); err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				return nil, errs
-			}
+			log.Println(id)
 		}
 		return data, nil
 	}
-	if _, err := os.Stat(fmt.Sprintf("statink_shifts/%s.jl.gz", statInkServer.ShortName)); err != nil {
-		if os.IsNotExist(err) {
-			f, err := os.Create(fmt.Sprintf("statink_shifts/%s.jl.gz", statInkServer.ShortName))
-			if err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				return errs
-			}
-			if err := f.Close(); err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				return errs
-			}
-		}
-	}
-	fileIn, err := os.Open(fmt.Sprintf("statink_shifts/%s.jl.gz", statInkServer.ShortName))
-	if err != nil {
-		errs = append(errs, err)
-		if err := jsonLinesWriter.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := file.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return errs
-	}
-	gzipReader, err := gzip.NewReader(fileIn)
-	if err != nil && !errors.Is(err, io.EOF) {
-		if err := jsonLinesWriter.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := fileIn.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := file.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		errs = append(errs, err)
-		return errs
-	}
-	bufioScan := bufio.NewScanner(gzipReader)
 	id := 1
-	if !errors.Is(err, io.EOF) {
-		for bufioScan.Scan() {
-			if err := json.Unmarshal([]byte(bufioScan.Text()), &shift); err != nil {
-				errs = append(errs, err)
-				if err := fileIn.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := jsonLinesWriter.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := gzipReader.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := file.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				return errs
-			}
-			id = shift.ID
-			if _, err := jsonLinesWriter.Write([]byte(bufioScan.Text())); err != nil {
-				errs = append(errs, err)
-				if err := fileIn.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := jsonLinesWriter.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := gzipReader.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := file.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				return errs
-			}
-			if _, err := jsonLinesWriter.Write([]byte("\n")); err != nil {
-				errs = append(errs, err)
-				if err := fileIn.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := jsonLinesWriter.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := gzipReader.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := file.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				return errs
-			}
-		}
-		if err := gzipReader.Close(); err != nil {
+	var ident string
+	if err := db.QueryRow("SELECT identifier FROM Shifts WHERE identifier LIKE ? ORDER BY id DESC;", fmt.Sprintf("%s%%", statInkServer.Address)).Scan(&ident); err == nil {
+		identStrs := strings.Split(ident, "/")
+		idBig, err := strconv.ParseInt(identStrs[len(identStrs)-1], 10, 32)
+		if err != nil {
 			errs = append(errs, err)
-			if err := jsonLinesWriter.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := file.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := fileIn.Close(); err != nil {
-				errs = append(errs, err)
-			}
+			errs = append(errs, types.NewStackTrace())
 			return errs
 		}
-	}
-	if err := fileIn.Close(); err != nil {
-		errs = append(errs, err)
-		if err := jsonLinesWriter.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := file.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		return errs
+		id = int(idBig)
 	}
 	for {
 		tempData, errs2 := getShift(id)
@@ -227,91 +182,10 @@ func GetAllShifts(statInkServer *types.Server, client *http.Client, quiet bool) 
 			return errs
 		}
 		if len(tempData) == 0 {
-			if err := jsonLinesWriter.Close(); err != nil {
-				errs = append(errs, err)
-				if err := file.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				return errs
-			}
-			if err := file.Close(); err != nil {
-				errs = append(errs, err)
-				return errs
-			}
-			if err := os.Remove(fmt.Sprintf("statink_shifts/%s.jl.gz", statInkServer.ShortName)); err != nil {
-				errs = append(errs, err)
-				return errs
-			}
-			if err := os.Rename(fmt.Sprintf("statink_shifts/%s_out.jl.gz", statInkServer.ShortName), fmt.Sprintf("statink_shifts/%s.jl.gz", statInkServer.ShortName)); err != nil {
-				errs = append(errs, err)
-				return errs
-			}
 			return nil
 		}
 		id = tempData[len(tempData)-1].ID
 	}
-}
-
-type shiftStatInkIterator struct {
-	serverAddr string
-	f          *os.File
-	buffRead   *bufio.Scanner
-	gzipReader *gzip.Reader
-}
-
-func (s *shiftStatInkIterator) Next() (shift core.Shift, errs []error) {
-	data := shiftStatInk{}
-	if s.buffRead.Scan() {
-		if err := json.Unmarshal([]byte(s.buffRead.Text()), &data); err != nil {
-			errs = append(errs, err)
-			if err := s.f.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := s.gzipReader.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			return nil, errs
-		}
-		return &data, nil
-	}
-	if err := s.gzipReader.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := s.f.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	errs = append(errs, &core.NoMoreShiftsError{})
-	return nil, errs
-}
-
-/*
-LoadFromFileIterator creates a core.ShiftIterator that iterates over the stat.ink jsonlimnes in the file.
-*/
-func LoadFromFileIterator(server types.Server) (core.ShiftIterator, []error) {
-	errs := []error{}
-	returnVal := shiftStatInkIterator{serverAddr: fmt.Sprintf("%ssalmon/", server.Address)}
-	var err error
-	returnVal.f, err = os.Open(fmt.Sprintf("statink_shifts/%s.jl.gz", server.ShortName))
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
-		}
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return nil, errs
-	}
-	returnVal.gzipReader, err = gzip.NewReader(returnVal.f)
-	if err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return nil, errs
-	}
-	returnVal.buffRead = bufio.NewScanner(returnVal.gzipReader)
-	return &returnVal, nil
-}
-
-func (s *shiftStatInkIterator) GetAddress() string {
-	return s.serverAddr
 }
 
 func (s *shiftStatInk) GetClearWave() int {

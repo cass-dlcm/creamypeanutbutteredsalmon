@@ -1,26 +1,22 @@
 package splatnet
 
 import (
-	"bufio"
-	"compress/gzip"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core/types"
 	"github.com/cass-dlcm/splatnetiksm"
-	"io"
 	"log"
 	"net/http"
-	"os"
 	"time"
 )
 
 /*
 GetAllShifts downloads every shiftSplatnet from the SplatNet server and saves it to a gzipped jsonlines file.
 */
-func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Client, quiet bool) (*string, *string, *string, []error) {
+func GetAllShifts(db *sql.DB, dbType, sessionToken, cookie, locale, userID string, client *http.Client, quiet bool) (*string, *string, *string, []error) {
 	var errs []error
 	_, timezone := time.Now().Zone()
 	timezone = -timezone / 60
@@ -81,114 +77,19 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 
 	var data shiftList
 
-	var jsonLinesWriter *gzip.Writer
-	if _, err := os.Stat("shifts.jl.gz"); err != nil {
-		if os.IsNotExist(err) {
-			f, err := os.Create("shifts.jl.gz")
-			if err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				return &sessionToken, &cookie, &userID, errs
-			}
-			if err := f.Close(); err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				return &sessionToken, &cookie, &userID, errs
-			}
-		}
-	}
-	fileIn, err := os.Open("shifts.jl.gz")
-	if err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return &sessionToken, &cookie, &userID, errs
-	}
-	gzRead, err := gzip.NewReader(fileIn)
-	eof := false
-	if err != nil {
-		if !errors.Is(err, io.EOF) {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
-			if err := fileIn.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			return &sessionToken, &cookie, &userID, errs
-		}
-		eof = true
-	}
-	bufScan := bufio.NewScanner(gzRead)
-	file, err := os.Create("shifts_out.jl.gz")
-	if err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return &sessionToken, &cookie, &userID, errs
-	}
-	jsonLinesWriter = gzip.NewWriter(file)
-	var text string
-
-	for !eof && bufScan.Scan() {
-		text = bufScan.Text()
-		if _, err := jsonLinesWriter.Write([]byte(text)); err != nil {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
-			if err := fileIn.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := jsonLinesWriter.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := gzRead.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := file.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			return &sessionToken, &cookie, &userID, errs
-		}
-		if _, err := jsonLinesWriter.Write([]byte("\n")); err != nil {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
-			if err := fileIn.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := jsonLinesWriter.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := gzRead.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := file.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			return &sessionToken, &cookie, &userID, errs
-		}
-	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		newSessionToken, newCookie, errs2 := splatnetiksm.GenNewCookie(locale, sessionToken, "blank", client)
 		if len(errs2) > 0 {
 			errs = append(errs, errs2...)
+			errs = append(errs, types.NewStackTrace())
+			return &sessionToken, &cookie, &userID, errs
 		}
 		sessionToken = *newSessionToken
 		cookie = *newCookie
-		if err := fileIn.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := jsonLinesWriter.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := gzRead.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := file.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if len(errs) > 0 {
-			return &sessionToken, &cookie, &userID, errs
-		}
-		newSessionToken, newCookie, newID, errsRec := GetAllShifts(sessionToken, cookie, locale, userID, client, quiet)
-		if len(errsRec) > 0 {
-			errs = append(errs, errsRec...)
+		newSessionToken, newCookie, newID, errs2 := GetAllShifts(db, dbType, sessionToken, cookie, locale, userID, client, quiet)
+		if len(errs2) > 0 {
+			errs = append(errs, errs2...)
+			errs = append(errs, types.NewStackTrace())
 			return &sessionToken, &cookie, &userID, errs
 		}
 		return newSessionToken, newCookie, newID, nil
@@ -198,163 +99,92 @@ func GetAllShifts(sessionToken, cookie, locale, userID string, client *http.Clie
 		newSessionToken, newCookie, errs2 := splatnetiksm.GenNewCookie(locale, sessionToken, "auth", client)
 		if len(errs2) > 0 {
 			errs = append(errs, errs2...)
+			errs = append(errs, types.NewStackTrace())
+			return &sessionToken, &cookie, &userID, errs
 		} else {
 			sessionToken = *newSessionToken
 			cookie = *newCookie
 		}
-		if err := fileIn.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := jsonLinesWriter.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := gzRead.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := file.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if len(errs) > 0 {
-			return &sessionToken, &cookie, &userID, errs
-		}
-		newSessionToken, newCookie, newID, errsRec := GetAllShifts(sessionToken, cookie, locale, userID, client, quiet)
+		newSessionToken, newCookie, newID, errsRec := GetAllShifts(db, dbType, sessionToken, cookie, locale, userID, client, quiet)
 		if len(errsRec) > 0 {
 			errs = append(errs, errsRec...)
 			return &sessionToken, &cookie, &userID, errs
 		}
 		return newSessionToken, newCookie, newID, nil
 	}
-
-	if err := fileIn.Close(); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		if err := jsonLinesWriter.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := file.Close(); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if !eof {
-		if err := gzRead.Close(); err != nil {
+	var highestID int
+	if err := db.QueryRow("SELECT id FROM Shifts ORDER BY id DESC LIMIT 1;").Scan(&highestID); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
 			errs = append(errs, err)
 			errs = append(errs, types.NewStackTrace())
-			if err := jsonLinesWriter.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := file.Close(); err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
-	if len(errs) > 0 {
-		return &sessionToken, &cookie, &userID, errs
-	}
-
-	shift := &shiftSplatnet{}
-	if json.Valid([]byte(text)) {
-		if err := json.Unmarshal([]byte(text), shift); err != nil {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
-			if err := jsonLinesWriter.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := file.Close(); err != nil {
-				errs = append(errs, err)
-			}
 			return &sessionToken, &cookie, &userID, errs
 		}
 	}
-
 	for i := range data.Results {
 		userID = data.Results[i].MyResult.Pid
-		if data.Results.inList(shift) {
-			break
+		result := &data.Results[i]
+		var w1event, w1tide, w2event, w2tide, w3event, w3tide string
+		var w1g, w2g, w3g int
+		if result.GetClearWave() == 3 {
+			w3event = string(result.WaveDetails[2].EventType.Key)
+			w3tide = result.WaveDetails[2].WaterLevel.Key
+			w3g = result.WaveDetails[2].GoldenEggs
 		}
-		fileText, err := json.Marshal(data.Results[i])
-		if err != nil {
-			errs = append(errs, err)
+		if result.GetClearWave() >= 2 {
+			w2event = string(result.WaveDetails[1].EventType.Key)
+			w2tide = result.WaveDetails[1].WaterLevel.Key
+			w2g = result.WaveDetails[1].GoldenEggs
+		}
+		if result.GetClearWave() >= 1 {
+			w1event = string(result.WaveDetails[0].EventType.Key)
+			w1tide = result.WaveDetails[0].WaterLevel.Key
+			w1g = result.WaveDetails[0].GoldenEggs
+		}
+		totalGolden := result.GetTotalEggs()
+		princess := 0
+		if totalGolden == result.MyResult.GoldenEggs || (len(result.OtherResults) > 0 && (totalGolden == result.OtherResults[0].GoldenEggs || (len(result.OtherResults) > 1 && (totalGolden == result.OtherResults[1].GoldenEggs || (len(result.OtherResults) > 2 && totalGolden == result.OtherResults[2].GoldenEggs))))) {
+			princess = 1
+		}
+		stage, errs2 := result.GetStage(nil)
+		if errs2 != nil {
+			errs = append(errs, errs2...)
 			errs = append(errs, types.NewStackTrace())
-			if err := jsonLinesWriter.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := file.Close(); err != nil {
-				errs = append(errs, err)
-			}
 			return &sessionToken, &cookie, &userID, errs
 		}
-		if _, err := jsonLinesWriter.Write(fileText); err != nil {
-			errs = append(errs, err)
+		weaponSet, errs2 := result.GetWeaponSet(nil)
+		if errs2 != nil {
+			errs = append(errs, errs2...)
 			errs = append(errs, types.NewStackTrace())
-			if err := jsonLinesWriter.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := file.Close(); err != nil {
-				errs = append(errs, err)
-			}
 			return &sessionToken, &cookie, &userID, errs
 		}
-		if _, err := jsonLinesWriter.Write([]byte("\n")); err != nil {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
-			if err := jsonLinesWriter.Close(); err != nil {
-				errs = append(errs, err)
+		var id int
+		if dbType == "sqlite" {
+			if err := db.QueryRow("SELECT id FROM Shifts WHERE time = ?", result.PlayTime).Scan(&id); err != nil {
+				if !errors.Is(err, sql.ErrNoRows) {
+					errs = append(errs, err)
+					errs = append(errs, types.NewStackTrace())
+					return &sessionToken, &cookie, &userID, errs
+				}
+				if _, err := db.Exec("INSERT INTO Shifts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", fmt.Sprintf("https://app.splatoon2.nintendo.net/api/coop_results/%d", result.JobID), w1event, w1tide, w1g, w2event, w2tide, w2g, w3event, w3tide, w3g, result.GetClearWave(), princess, stage, *weaponSet, result.PlayTime, highestID+i+1); err != nil {
+					errs = append(errs, err)
+					errs = append(errs, types.NewStackTrace())
+					return &sessionToken, &cookie, &userID, errs
+				}
 			}
-			if err := file.Close(); err != nil {
-				errs = append(errs, err)
+		} else if dbType == "postgresql" {
+			if err := db.QueryRow("SELECT id FROM Shifts WHERE identifier = $1", fmt.Sprintf("https://app.splatoon2.nintendo.net/api/coop_results/%d", result.JobID)).Scan(&id); err != nil {
+				if !errors.Is(err, sql.ErrNoRows) {
+					errs = append(errs, err)
+					errs = append(errs, types.NewStackTrace())
+					return &sessionToken, &cookie, &userID, errs
+				}
+				if _, err := db.Exec("INSERT INTO Shifts VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);", fmt.Sprintf("https://app.splatoon2.nintendo.net/api/coop_results/%d", result.JobID), w1event, w1tide, w1g, w2event, w2tide, w2g, w3event, w3tide, w3g, result.GetClearWave(), princess, stage, *weaponSet, result.PlayTime, highestID+i+1); err != nil {
+					errs = append(errs, err)
+					errs = append(errs, types.NewStackTrace())
+					return &sessionToken, &cookie, &userID, errs
+				}
 			}
-			return &sessionToken, &cookie, &userID, errs
 		}
-	}
-
-	if err := jsonLinesWriter.Close(); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-	}
-	if err := file.Close(); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-	}
-	if len(errs) > 0 {
-		return &sessionToken, &cookie, &userID, errs
-	}
-
-	if err := os.Remove("shifts.jl.gz"); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return &sessionToken, &cookie, &userID, errs
-	}
-	if err := os.Rename("shifts_out.jl.gz", "shifts.jl.gz"); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return &sessionToken, &cookie, &userID, errs
 	}
 	return &sessionToken, &cookie, &userID, nil
-}
-
-/*
-LoadFromFileIterator creates a core.ShiftIterator that iterates over the SplatNet jsonlimnes in the file.
-*/
-func LoadFromFileIterator() (core.ShiftIterator, []error) {
-	returnVal := shiftSplatnetIterator{}
-	var errs []error
-	var err error
-	returnVal.f, err = os.Open("shifts.jl.gz")
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
-		}
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return nil, errs
-	}
-	returnVal.gzipReader, err = gzip.NewReader(returnVal.f)
-	if err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return nil, errs
-	}
-	returnVal.buffRead = bufio.NewScanner(returnVal.gzipReader)
-	return &returnVal, nil
 }

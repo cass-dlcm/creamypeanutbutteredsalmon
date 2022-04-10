@@ -19,29 +19,47 @@ const (
 )
 
 /*
-String returns the name of the Event, currently hardcoded as the en-US locale, or an error if the Event isn't a valid value.
+String returns the name of the Event, currently hardcoded as the en-US locale.
 */
-func (e Event) String() (string, []error) {
-	var errs []error
+func (e Event) String() string {
 	switch e {
 	case WaterLevels:
-		return "Water Levels", nil
+		return "Water Levels"
 	case Rush:
-		return "Rush", nil
+		return "Rush"
 	case Fog:
-		return "Fog", nil
+		return "Fog"
 	case GoldieSeeking:
-		return "Goldie Seeking", nil
+		return "Goldie Seeking"
 	case Griller:
-		return "Griller", nil
+		return "Griller"
 	case CohockCharge:
-		return "Cohock Charge", nil
+		return "Cohock Charge"
 	case Mothership:
-		return "Mothership", nil
+		return "Mothership"
 	}
-	errs = append(errs, &ErrIntEventNotFound{Event: int(e)})
-	errs = append(errs, NewStackTrace())
-	return "", errs
+	return ""
+}
+
+func DisplayStringToEvent(inStr string) *Event {
+	var event Event
+	switch inStr {
+	case WaterLevels.String():
+		event = WaterLevels
+	case Rush.String():
+		event = Rush
+	case Fog.String():
+		event = Fog
+	case GoldieSeeking.String():
+		event = GoldieSeeking
+	case Griller.String():
+		event = Griller
+	case CohockCharge.String():
+		event = CohockCharge
+	case Mothership.String():
+		event = Mothership
+	}
+	return &event
 }
 
 /*
@@ -70,6 +88,29 @@ func StringToEvent(inStr string) (*Event, []error) {
 		return nil, errs
 	}
 	return &eventRes, nil
+}
+
+/*
+EventToKeyString returns the key of an Event
+*/
+func (e Event) EventToKeyString() string {
+	switch e {
+	case WaterLevels:
+		return "water_levels"
+	case Rush:
+		return "rush"
+	case Fog:
+		return "fog"
+	case GoldieSeeking:
+		return "goldie_seeking"
+	case Griller:
+		return "griller"
+	case CohockCharge:
+		return "cohock_charge"
+	case Mothership:
+		return "mothership"
+	}
+	return ""
 }
 
 /*

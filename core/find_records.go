@@ -109,7 +109,6 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 			weaponsType, _ := shift.GetWeaponSet(&scheduleList)
 			stage, _ := shift.GetStage(&scheduleList)
 			nightCount := 0
-			waveCount := shift.GetWaveCount()
 			waveEggs := shift.GetEggsWaves()
 			waveEvents, _ := shift.GetEvents()
 			waveWaterLevel, _ := shift.GetTides()
@@ -120,7 +119,7 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 				errs = append(errs, errs2...)
 				return nil, errs
 			}
-			for l := 0; l < waveCount && l < clearWaves; l++ {
+			for l := 0; l < clearWaves; l++ {
 				if (*waveEvents)[l] == types.WaterLevels && hasEvents.HasElement(types.WaterLevels) {
 					if records[recordName(string((*waveWaterLevel)[l])+" Normal")] == nil {
 						records[recordName(string((*waveWaterLevel)[l])+" Normal")] = &map[string]*map[types.WeaponSchedule]*record{}
@@ -139,9 +138,10 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 					}
 					continue
 				}
-				eventStr, errs2 := (*waveEvents)[l].String()
-				if len(errs2) > 0 {
-					errs = append(errs, errs2...)
+				eventStr := (*waveEvents)[l].String()
+				if eventStr == "" {
+					errs = append(errs, &types.ErrIntEventNotFound{Event: int((*waveEvents)[l])})
+					errs = append(errs, types.NewStackTrace())
 					return nil, errs
 				}
 				if hasEvents.HasElement((*waveEvents)[l]) &&
@@ -331,7 +331,6 @@ func FindLatest(iterators []ShiftIterator, hasEvents types.EventArr, tides types
 			}
 			totalEggs := shift.GetTotalEggs()
 			nightCount := 0
-			waveCount := shift.GetWaveCount()
 			waveEggs := shift.GetEggsWaves()
 			waveEvents, _ := shift.GetEvents()
 			waveWaterLevel, _ := shift.GetTides()
@@ -342,7 +341,7 @@ func FindLatest(iterators []ShiftIterator, hasEvents types.EventArr, tides types
 				errs = append(errs, errs2...)
 				return nil, errs
 			}
-			for l := 0; l < waveCount && l < clearWaves; l++ {
+			for l := 0; l < clearWaves; l++ {
 				if (*waveEvents)[l] == types.WaterLevels && hasEvents.HasElement(types.WaterLevels) {
 					if records[recordName(string((*waveWaterLevel)[l])+" Normal")] == nil || waveEggs[l] > records[recordName(string((*waveWaterLevel)[l])+" Normal")].RecordAmount {
 						records[recordName(string((*waveWaterLevel)[l])+" Normal")] = &record{
@@ -355,9 +354,10 @@ func FindLatest(iterators []ShiftIterator, hasEvents types.EventArr, tides types
 					}
 					continue
 				}
-				eventStr, errs2 := (*waveEvents)[l].String()
-				if len(errs2) > 0 {
-					errs = append(errs, errs2...)
+				eventStr := (*waveEvents)[l].String()
+				if eventStr == "" {
+					errs = append(errs, &types.ErrIntEventNotFound{Event: int((*waveEvents)[l])})
+					errs = append(errs, types.NewStackTrace())
 					return nil, errs
 				}
 				if hasEvents.HasElement((*waveEvents)[l]) &&

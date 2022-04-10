@@ -1,15 +1,12 @@
 package salmonstats
 
 import (
-	"bufio"
-	"compress/gzip"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core"
 	"github.com/cass-dlcm/creamypeanutbutteredsalmon/core/types"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -19,16 +16,16 @@ import (
 /*
 GetAllShifts downloads every shiftSalmonStats from the provided salmon-stats/api server and saves it to a gzipped jsonlines file.
 */
-func GetAllShifts(userID string, server types.Server, client *http.Client, quiet bool) (errs []error) {
+func GetAllShifts(db *sql.DB, dbType, userID string, server types.Server, client *http.Client, quiet bool) (errs []error) {
+	schedule, errs2 := types.GetSchedules(client)
+	if errs2 != nil {
+		errs = append(errs, errs2...)
+		errs = append(errs, types.NewStackTrace())
+		return errs
+	}
 	if !quiet {
 		log.Println("Pulling Salmon Run data from online...")
 	}
-	var jsonLinesWriter *gzip.Writer
-	file, err := os.Create(fmt.Sprintf("salmonstats_shifts/%s_out.jl.gz", server.ShortName))
-	if err != nil {
-		return []error{err}
-	}
-	jsonLinesWriter = gzip.NewWriter(file)
 	getShifts := func(page int) (found bool, errs []error) {
 		url := fmt.Sprintf("%splayers/%s/results", server.Address, userID)
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -67,31 +64,97 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 			errs = append(errs, types.NewStackTrace())
 			return false, errs
 		}
-
+		var highestID int
+		if err := db.QueryRow("SELECT id FROM Shifts ORDER BY id DESC LIMIT 1;").Scan(&highestID); err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				errs = append(errs, err)
+				errs = append(errs, types.NewStackTrace())
+				return false, errs
+			}
+		}
 		for i := range data.Results {
-			if _, err := os.Stat("salmonstats_shifts"); errors.Is(err, os.ErrNotExist) {
-				err := os.Mkdir("salmonstats_shifts", os.ModePerm)
-				if err != nil {
-					errs = append(errs, err)
-					errs = append(errs, types.NewStackTrace())
-					return false, errs
+			events, errs2 := data.Results[i].GetEvents()
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				errs = append(errs, types.NewStackTrace())
+				return false, errs
+			}
+			tides, errs2 := data.Results[i].GetTides()
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				errs = append(errs, types.NewStackTrace())
+				return false, errs
+			}
+			golden := data.Results[i].GetEggsWaves()
+			totalGolden := data.Results[i].GetTotalEggs()
+			clearWave := data.Results[i].GetClearWave()
+			princess := 0
+			if data.Results[i].PlayerResults[0].GoldenEggs == totalGolden || (len(data.Results[i].PlayerResults) > 1 && (data.Results[i].PlayerResults[1].GoldenEggs == totalGolden || (len(data.Results[i].PlayerResults) > 2 && (data.Results[i].PlayerResults[2].GoldenEggs == totalGolden || (len(data.Results[i].PlayerResults) > 3 && data.Results[i].PlayerResults[3].GoldenEggs == totalGolden))))) {
+				princess = 1
+			}
+			stage, errs2 := data.Results[i].GetStage(&schedule)
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				errs = append(errs, types.NewStackTrace())
+				return false, errs
+			}
+			weaponSet, errs2 := data.Results[i].GetWeaponSet(&schedule)
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				errs = append(errs, types.NewStackTrace())
+				return false, errs
+			}
+			t, errs2 := data.Results[i].GetTime()
+			if errs2 != nil {
+				errs = append(errs, errs2...)
+				errs = append(errs, types.NewStackTrace())
+				return false, errs
+			}
+			var w1event, w1tide, w2event, w2tide, w3event, w3tide string
+			var w1g, w2g, w3g int
+			if clearWave == 3 {
+				w3event = (*events)[2].EventToKeyString()
+				w3tide = string((*tides)[2])
+				w3g = golden[2]
+			}
+			if clearWave >= 2 {
+				w2event = (*events)[1].EventToKeyString()
+				w2tide = string((*tides)[1])
+				w2g = golden[2]
+			}
+			if clearWave >= 1 {
+				w1event = (*events)[0].EventToKeyString()
+				w1tide = string((*tides)[0])
+				w1g = golden[0]
+			}
+			if dbType == "sqlite" {
+				var id int
+				if err := db.QueryRow("SELECT id FROM Shifts WHERE identifier = ?", data.Results[i].GetIdentifier(server)).Scan(&id); err != nil {
+					if !errors.Is(err, sql.ErrNoRows) {
+						errs = append(errs, err)
+						errs = append(errs, types.NewStackTrace())
+						return false, errs
+					}
+					if _, err := db.Exec("INSERT INTO Shifts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", data.Results[i].GetIdentifier(server), w1event, w1tide, w1g, w2event, w2tide, w2g, w3event, w3tide, w3g, clearWave, princess, stage, *weaponSet, t.Unix(), highestID+i+1); err != nil {
+						errs = append(errs, err)
+						errs = append(errs, types.NewStackTrace())
+						return false, errs
+					}
 				}
-			}
-			fileText, err := json.Marshal(data.Results[i])
-			if err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				return false, errs
-			}
-			if _, err := jsonLinesWriter.Write(fileText); err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				return false, errs
-			}
-			if _, err := jsonLinesWriter.Write([]byte("\n")); err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				return false, errs
+			} else if dbType == "postgresql" {
+				var id int
+				if err := db.QueryRow("SELECT id FROM Shifts WHERE identifier = $1", data.Results[i].GetIdentifier(server)).Scan(&id); err != nil {
+					if !errors.Is(err, sql.ErrNoRows) {
+						errs = append(errs, err)
+						errs = append(errs, types.NewStackTrace())
+						return false, errs
+					}
+					if _, err := db.Exec("INSERT INTO Shifts VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);", data.Results[i].GetIdentifier(server), w1event, w1tide, w1g, w2event, w2tide, w2g, w3event, w3tide, w3g, clearWave, princess, stage, *weaponSet, t.Unix(), highestID+i+1); err != nil {
+						errs = append(errs, err)
+						errs = append(errs, types.NewStackTrace())
+						return false, errs
+					}
+				}
 			}
 		}
 		return len(data.Results) > 0, nil
@@ -111,100 +174,12 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 			}
 		}
 	}
-	f, err := os.Open(fmt.Sprintf("salmonstats_shifts/%s.jl.gz", server.ShortName))
-	if err != nil {
-		if err := jsonLinesWriter.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := file.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return errs
+	var count int
+	if dbType == "sqlite" {
+		_ = db.QueryRow("SELECT count() FROM Shifts WHERE identifier LIKE ?", fmt.Sprintf("%s%%", server.Address)).Scan(&count)
+	} else if dbType == "postgresql" {
+		_ = db.QueryRow("SELECT count() FROM Shifts WHERE identifier LIKE $1", fmt.Sprintf("%s%%", server.Address)).Scan(&count)
 	}
-	count := 0
-	gzRead, err := gzip.NewReader(f)
-	if err != nil && !errors.Is(err, io.EOF) {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		if err := f.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := jsonLinesWriter.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := file.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		return errs
-	}
-	bufScan := bufio.NewScanner(gzRead)
-	if !errors.Is(err, io.EOF) {
-		for bufScan.Scan() {
-			count++
-			if _, err := jsonLinesWriter.Write([]byte(bufScan.Text())); err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				if err := f.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := jsonLinesWriter.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := gzRead.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := file.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				return errs
-			}
-			if _, err := jsonLinesWriter.Write([]byte("\n")); err != nil {
-				errs = append(errs, err)
-				errs = append(errs, types.NewStackTrace())
-				if err := f.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := jsonLinesWriter.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := gzRead.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				if err := file.Close(); err != nil {
-					errs = append(errs, err)
-				}
-				return errs
-			}
-		}
-		if err := gzRead.Close(); err != nil {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
-			if err := jsonLinesWriter.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := file.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := f.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			return errs
-		}
-	}
-	if err := f.Close(); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		if err := jsonLinesWriter.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		if err := file.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		return errs
-	}
-
 	page := count/200 + 1
 	hasPages := true
 	for hasPages {
@@ -214,90 +189,7 @@ func GetAllShifts(userID string, server types.Server, client *http.Client, quiet
 		}
 		page++
 	}
-	if err := jsonLinesWriter.Close(); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		if err := file.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		return errs
-	}
-	if err := file.Close(); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return errs
-	}
-	if err := os.Remove(fmt.Sprintf("salmonstats_shifts/%s.jl.gz", server.ShortName)); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return errs
-	}
-	if err := os.Rename(fmt.Sprintf("salmonstats_shifts/%s_out.jl.gz", server.ShortName), fmt.Sprintf("salmonstats_shifts/%s.jl.gz", server.ShortName)); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return errs
-	}
 	return nil
-}
-
-type shiftSalmonStatsIterator struct {
-	serverAddr string
-	f          *os.File
-	buffRead   *bufio.Scanner
-	gzipReader *gzip.Reader
-}
-
-func (s *shiftSalmonStatsIterator) Next() (shift core.Shift, errs []error) {
-	data := shiftSalmonStats{}
-	if s.buffRead.Scan() {
-		if err := json.Unmarshal([]byte(s.buffRead.Text()), &data); err != nil {
-			errs = append(errs, err)
-			errs = append(errs, types.NewStackTrace())
-			if err := s.f.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			if err := s.gzipReader.Close(); err != nil {
-				errs = append(errs, err)
-			}
-			return nil, errs
-		}
-		return &data, nil
-	}
-	if err := s.f.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := s.gzipReader.Close(); err != nil {
-		errs = append(errs, err)
-	}
-	errs = append(errs, &core.NoMoreShiftsError{})
-	return nil, errs
-}
-
-/*
-LoadFromFileIterator creates a core.ShiftIterator that iterates over the salmon-stats/api jsonlimnes in the file.
-*/
-func LoadFromFileIterator(server types.Server) (core.ShiftIterator, []error) {
-	errs := []error{}
-	iter := &shiftSalmonStatsIterator{serverAddr: fmt.Sprintf("%sresults/", server.Address)}
-	var err error
-	iter.f, err = os.Open(fmt.Sprintf("salmonstats_shifts/%s.jl.gz", server.ShortName))
-	if err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return nil, errs
-	}
-	iter.gzipReader, err = gzip.NewReader(iter.f)
-	if err != nil {
-		errs = append(errs, err)
-		errs = append(errs, types.NewStackTrace())
-		return nil, errs
-	}
-	iter.buffRead = bufio.NewScanner(iter.gzipReader)
-	return iter, nil
-}
-
-func (s *shiftSalmonStatsIterator) GetAddress() string {
-	return s.serverAddr
 }
 
 func (s *shiftSalmonStats) GetClearWave() int {

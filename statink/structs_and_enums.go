@@ -228,6 +228,6 @@ func (s *shiftStatInk) GetTime() (time.Time, []error) {
 	return s.StartAt.Iso8601.Local(), nil
 }
 
-func (s *shiftStatInk) GetIdentifier() string {
-	return fmt.Sprintf("%d", s.ID)
+func (s *shiftStatInk) GetIdentifier(server types.Server) string {
+	return fmt.Sprintf("%s%d", server.Address, s.ID)
 }
