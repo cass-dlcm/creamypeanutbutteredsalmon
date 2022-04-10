@@ -7,10 +7,13 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
-    goos:
-      - linux
-      - windows
-      - darwin
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - freebsd_amd64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.CommitDate}} -X main.builtBy=goreleaser
     mod_timestamp: '{{ .CommitTimestamp }}'
@@ -20,7 +23,7 @@ archives:
       darwin: Darwin
       linux: Linux
       windows: Windows
-      386: i386
+      freebsd: FreeBSD
       amd64: x86_64
 checksum:
   name_template: 'checksums.txt'
