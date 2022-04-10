@@ -139,8 +139,7 @@ func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents type
 				}
 				eventStr := (*waveEvents)[l].String()
 				if eventStr == "" {
-					errs = append(errs, &types.ErrIntEventNotFound{Event: int((*waveEvents)[l])})
-					errs = append(errs, types.NewStackTrace())
+					errs = append(errs, &types.ErrIntEventNotFound{Event: int((*waveEvents)[l])}, types.NewStackTrace())
 					return nil, errs
 				}
 				if hasEvents.HasElement((*waveEvents)[l]) &&
@@ -354,8 +353,7 @@ func FindLatest(iterators []ShiftIterator, hasEvents types.EventArr, tides types
 				}
 				eventStr := (*waveEvents)[l].String()
 				if eventStr == "" {
-					errs = append(errs, &types.ErrIntEventNotFound{Event: int((*waveEvents)[l])})
-					errs = append(errs, types.NewStackTrace())
+					errs = append(errs, &types.ErrIntEventNotFound{Event: int((*waveEvents)[l])}, types.NewStackTrace())
 					return nil, errs
 				}
 				if hasEvents.HasElement((*waveEvents)[l]) &&

@@ -42,20 +42,17 @@ func GetSchedules(client *http.Client) (Schedule, []error) {
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		errs = append(errs, err)
-		errs = append(errs, NewStackTrace())
+		errs = append(errs, err, NewStackTrace())
 		return Schedule{}, errs
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		errs = append(errs, err)
-		errs = append(errs, NewStackTrace())
+		errs = append(errs, err, NewStackTrace())
 		return Schedule{}, errs
 	}
 	data := Schedule{}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		errs = append(errs, err)
-		errs = append(errs, NewStackTrace())
+		errs = append(errs, err, NewStackTrace())
 		return Schedule{}, errs
 	}
 	return data, nil
