@@ -57,17 +57,17 @@ Output features:
 
 - [x] outputs as valid JSON
 - [x] structured with record as top level, stage as middle level, and weapon schedule as bottom level of hierarchy
-- [x] saving shift data to JSON files
+- [x] saving shift data to sqlite database
 
 Input features:
 - [x] reading from SplatNet 2
 - [x] reading from stat.ink
-- [x] reading from local files
+- [x] reading from local database
 - [x] reading from salmon-stats.yuki.games
 
 ## Setup instructions
 
-*These instructions are meant to be accessible and easy-to-follow for all users, and this is the recommended way to run the script. If you run into trouble, please reach out! However, an alternative [simple version](https://github.com/cass-dlcm/creamypeanutbutteredsalmon/wiki/simple-setup-instructions) is also available.*
+*These instructions are meant to be accessible and easy-to-follow for all users, and this is the recommended way to run the script. If you run into trouble, please reach out!*
 
 1. Download and install Go. On Windows, download the installer from the [official website](https://www.golang.org/dl/). On macOS, install [Homebrew](https://brew.sh/) and then run `brew install go`.
 
