@@ -10,6 +10,7 @@ import (
 	"github.com/cass-dlcm/splatnetiksm"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -120,17 +121,17 @@ func GetAllShifts(db *sql.DB, dbType, sessionToken, cookie, locale, userID strin
 		var w1event, w1tide, w2event, w2tide, w3event, w3tide string
 		var w1g, w2g, w3g int
 		if result.GetClearWave() == 3 {
-			w3event = string(result.WaveDetails[2].EventType.Key)
+			w3event = strings.ReplaceAll(string(result.WaveDetails[2].EventType.Key), "-", "_")
 			w3tide = result.WaveDetails[2].WaterLevel.Key
 			w3g = result.WaveDetails[2].GoldenEggs
 		}
 		if result.GetClearWave() >= 2 {
-			w2event = string(result.WaveDetails[1].EventType.Key)
+			w2event = strings.ReplaceAll(string(result.WaveDetails[1].EventType.Key), "-", "_")
 			w2tide = result.WaveDetails[1].WaterLevel.Key
 			w2g = result.WaveDetails[1].GoldenEggs
 		}
 		if result.GetClearWave() >= 1 {
-			w1event = string(result.WaveDetails[0].EventType.Key)
+			w1event = strings.ReplaceAll(string(result.WaveDetails[0].EventType.Key), "-", "_")
 			w1tide = result.WaveDetails[0].WaterLevel.Key
 			w1g = result.WaveDetails[0].GoldenEggs
 		}

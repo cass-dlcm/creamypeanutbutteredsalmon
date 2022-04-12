@@ -41,33 +41,12 @@ func (e Event) String() string {
 	return ""
 }
 
-func DisplayStringToEvent(inStr string) *Event {
-	var event Event
-	switch inStr {
-	case WaterLevels.String():
-		event = WaterLevels
-	case Rush.String():
-		event = Rush
-	case Fog.String():
-		event = Fog
-	case GoldieSeeking.String():
-		event = GoldieSeeking
-	case Griller.String():
-		event = Griller
-	case CohockCharge.String():
-		event = CohockCharge
-	case Mothership.String():
-		event = Mothership
-	}
-	return &event
-}
-
 /*
 StringToEvent returns a pointer to an Event if the Event matches the inputted string, otherwise it returns an error.
 */
 func StringToEvent(inStr string) Event {
 	switch inStr {
-	case "water_levels":
+	case "water_levels", "":
 		return WaterLevels
 	case "rush":
 		return Rush
