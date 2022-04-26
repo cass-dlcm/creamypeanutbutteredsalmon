@@ -124,16 +124,25 @@ func GetAllShifts(db *sql.DB, dbType, sessionToken, cookie, locale, userID strin
 			w3event = strings.ReplaceAll(string(result.WaveDetails[2].EventType.Key), "-", "_")
 			w3tide = result.WaveDetails[2].WaterLevel.Key
 			w3g = result.WaveDetails[2].GoldenEggs
+			if w3event == "the_mothership" {
+				w3event = "mothership"
+			}
 		}
 		if result.GetClearWave() >= 2 {
 			w2event = strings.ReplaceAll(string(result.WaveDetails[1].EventType.Key), "-", "_")
 			w2tide = result.WaveDetails[1].WaterLevel.Key
 			w2g = result.WaveDetails[1].GoldenEggs
+			if w2event == "the_mothership" {
+				w2event = "mothership"
+			}
 		}
 		if result.GetClearWave() >= 1 {
 			w1event = strings.ReplaceAll(string(result.WaveDetails[0].EventType.Key), "-", "_")
 			w1tide = result.WaveDetails[0].WaterLevel.Key
 			w1g = result.WaveDetails[0].GoldenEggs
+			if w1event == "the_mothership" {
+				w1event = "mothership"
+			}
 		}
 		totalGolden := 0
 		for i := range result.WaveDetails {
