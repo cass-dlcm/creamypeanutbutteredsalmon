@@ -19,7 +19,6 @@ const (
 	ltNormal                recordName = "LT Normal"
 	ntRush                  recordName = "NT Rush"
 	htRush                  recordName = "HT Rush"
-	ltRush                  recordName = "LT Rush"
 	ntFog                   recordName = "NT Fog"
 	htFog                   recordName = "HT Fog"
 	ltFog                   recordName = "LT Fog"
@@ -175,7 +174,6 @@ func getRecordNames() []recordName {
 		ltNormal,
 		ntRush,
 		htRush,
-		ltRush,
 		ntFog,
 		htFog,
 		ltFog,
