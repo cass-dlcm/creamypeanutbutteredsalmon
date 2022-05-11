@@ -14,7 +14,7 @@ import (
 )
 
 /*
-GetAllShifts downloads every shiftSalmonStats from the provided salmon-stats/api server and saves it to a gzipped jsonlines file.
+GetAllShifts downloads every shiftSalmonStats from the provided salmon-stats/api server and saves it to the provided database.
 */
 func GetAllShifts(db *sql.DB, dbType, userID string, server types.Server, client *http.Client, quiet bool) (errs []error) {
 	schedule, errs2 := types.GetSchedules(client)
@@ -56,6 +56,9 @@ func GetAllShifts(db *sql.DB, dbType, userID string, server types.Server, client
 			}
 		}()
 		var data shiftPage
+		if resp.StatusCode != 200 {
+			return false, nil
+		}
 		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 			errs = append(errs, err, types.NewStackTrace())
 			return false, errs

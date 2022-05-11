@@ -15,7 +15,7 @@ import (
 )
 
 /*
-GetAllShifts downloads every shiftStatInk from the provided stat.ink server and saves it to a gzipped jsonlines file.
+GetAllShifts downloads every shiftStatInk from the provided stat.ink server and saves it to the provided database.
 */
 func GetAllShifts(db *sql.DB, dbType string, statInkServer *types.Server, client *http.Client, quiet bool) (errs []error) {
 	schedule, errs2 := types.GetSchedules(client)
@@ -144,8 +144,8 @@ func GetAllShifts(db *sql.DB, dbType string, statInkServer *types.Server, client
 					}
 				}
 			}
-			log.Println(id)
 		}
+		log.Println(id)
 		return data, nil
 	}
 	id := 1

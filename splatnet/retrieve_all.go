@@ -15,7 +15,7 @@ import (
 )
 
 /*
-GetAllShifts downloads every shiftSplatnet from the SplatNet server and saves it to a gzipped jsonlines file.
+GetAllShifts downloads every shiftSplatnet from the SplatNet server and saves it to the provided database.
 */
 func GetAllShifts(db *sql.DB, dbType, sessionToken, cookie, locale, userID string, client *http.Client, quiet bool) (*string, *string, *string, []error) {
 	var errs []error
@@ -97,10 +97,9 @@ func GetAllShifts(db *sql.DB, dbType, sessionToken, cookie, locale, userID strin
 		if len(errs2) > 0 {
 			errs = append(errs, append(errs2, types.NewStackTrace())...)
 			return &sessionToken, &cookie, &userID, errs
-		} else {
-			sessionToken = *newSessionToken
-			cookie = *newCookie
 		}
+		sessionToken = *newSessionToken
+		cookie = *newCookie
 		newSessionToken, newCookie, newID, errsRec := GetAllShifts(db, dbType, sessionToken, cookie, locale, userID, client, quiet)
 		if len(errsRec) > 0 {
 			errs = append(errs, errsRec...)

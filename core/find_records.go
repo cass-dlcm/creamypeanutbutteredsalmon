@@ -51,10 +51,12 @@ func filterWeapons(weapons []types.WeaponSchedule, data Shift, schedules *types.
 	return nil, nil
 }
 
+type CompleteRecordsMap map[recordName]*map[string]*map[types.WeaponSchedule]*record
+
 /*
 FindRecords uses the given iterators to pull the shift data from the various sources based on the parameters, and finds records based on the set filters.
 */
-func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents types.EventArr, tides types.TideArr, weapons []types.WeaponSchedule, client *http.Client) (map[recordName]*map[string]*map[types.WeaponSchedule]*record, []error) {
+func FindRecords(iterators []ShiftIterator, stages []types.Stage, hasEvents types.EventArr, tides types.TideArr, weapons []types.WeaponSchedule, client *http.Client) (CompleteRecordsMap, []error) {
 	var errs []error
 	scheduleList, errs2 := types.GetSchedules(client)
 	if errs2 != nil {
@@ -276,10 +278,12 @@ func filterSchedule(shift Shift, latest *types.ScheduleItem, schedule *types.Sch
 	return shift, nil
 }
 
+type PartialRecordsMap map[recordName]*record
+
 /*
 FindLatest uses the given iterators to pull the shift data from the various sources based on the parameters, and finds records based on the set filters.
 */
-func FindLatest(iterators []ShiftIterator, hasEvents types.EventArr, tides types.TideArr, client *http.Client) (map[recordName]*record, []error) {
+func FindLatest(iterators []ShiftIterator, hasEvents types.EventArr, tides types.TideArr, client *http.Client) (PartialRecordsMap, []error) {
 	var errs []error
 	scheduleList, errs2 := types.GetSchedules(client)
 	latest := &types.ScheduleItem{StartUtc: time.Unix(0, 0)}

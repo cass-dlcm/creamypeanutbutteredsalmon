@@ -164,7 +164,7 @@ type config struct {
 	Cookie             string          `json:"cookie"`
 	SessionToken       string          `json:"session_token"`
 	UserLang           string          `json:"user_lang"`
-	UserId             string          `json:"user_id"`
+	UserID             string          `json:"user_id"`
 	StatinkServers     []*types.Server `json:"statink_servers"`
 	SalmonstatsServers []*types.Server `json:"salmonstats_servers"`
 }
@@ -194,11 +194,11 @@ func main() {
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		configValues := newConfig()
-		configJson, err := json.MarshalIndent(configValues, "", "    ")
+		configJSON, err := json.MarshalIndent(configValues, "", "    ")
 		if err != nil {
 			log.Panicln(err)
 		}
-		if err := os.WriteFile("config.json", configJson, 0600); err != nil {
+		if err := os.WriteFile("config.json", configJSON, 0600); err != nil {
 			log.Panicln(err)
 		}
 	}
@@ -206,7 +206,7 @@ func main() {
 	if err != nil {
 		log.Panicln(err)
 	}
-	configJson, err := ioutil.ReadAll(configFile)
+	configJSON, err := ioutil.ReadAll(configFile)
 	if err != nil {
 		if err := configFile.Close(); err != nil {
 			log.Println(err)
@@ -217,7 +217,7 @@ func main() {
 		log.Panicln(err)
 	}
 	var configValues config
-	if err := json.Unmarshal(configJson, &configValues); err != nil {
+	if err := json.Unmarshal(configJSON, &configValues); err != nil {
 		log.Panicln(err)
 	}
 	client := &http.Client{
@@ -237,11 +237,11 @@ func main() {
 		if errs != nil {
 			log.Panicln(errs)
 		}
-		configJson, err = json.MarshalIndent(configValues, "", "    ")
+		configJSON, err = json.MarshalIndent(configValues, "", "    ")
 		if err != nil {
 			log.Panicln(err)
 		}
-		if err := os.WriteFile("config.json", configJson, 0600); err != nil {
+		if err := os.WriteFile("config.json", configJSON, 0600); err != nil {
 			log.Panicln(err)
 		}
 	}
@@ -252,21 +252,21 @@ func main() {
 	}
 	iterators := []core.ShiftIterator{core.NewDBShiftIterator(db, dbType)}
 	if useSplatnet {
-		sessionToken, cookie, userID, errs := splatnet.GetAllShifts(db, dbType, configValues.SessionToken, configValues.Cookie, configValues.UserLang, configValues.UserId, client, outFile == "")
+		sessionToken, cookie, userID, errs := splatnet.GetAllShifts(db, dbType, configValues.SessionToken, configValues.Cookie, configValues.UserLang, configValues.UserID, client, outFile == "")
 		if errs != nil {
 			log.Panicln(errs)
 		}
-		configValues.SessionToken, configValues.Cookie, configValues.UserId = *sessionToken, *cookie, *userID
-		configJson, err = json.MarshalIndent(configValues, "", "    ")
+		configValues.SessionToken, configValues.Cookie, configValues.UserID = *sessionToken, *cookie, *userID
+		configJSON, err = json.MarshalIndent(configValues, "", "    ")
 		if err != nil {
 			log.Panicln(err)
 		}
-		if err := os.WriteFile("config.json", configJson, 0600); err != nil {
+		if err := os.WriteFile("config.json", configJSON, 0600); err != nil {
 			log.Panicln(err)
 		}
 	}
 	for i := range salmonStatsServers {
-		if errs := salmonstats.GetAllShifts(db, dbType, configValues.UserId, *salmonStatsServers[i], client, outFile == ""); len(errs) > 0 {
+		if errs := salmonstats.GetAllShifts(db, dbType, configValues.UserID, *salmonStatsServers[i], client, outFile == ""); len(errs) > 0 {
 			log.Panicln(errs)
 		}
 	}
@@ -274,11 +274,11 @@ func main() {
 		if errs := statink.GetAllShifts(db, dbType, statInkServers[i], client, outFile == ""); errs != nil {
 			log.Panicln(errs)
 		}
-		configJson, err = json.MarshalIndent(configValues, "", "    ")
+		configJSON, err = json.MarshalIndent(configValues, "", "    ")
 		if err != nil {
 			log.Panicln(err)
 		}
-		if err := os.WriteFile("config.json", configJson, 0600); err != nil {
+		if err := os.WriteFile("config.json", configJSON, 0600); err != nil {
 			log.Panicln(err)
 		}
 	}

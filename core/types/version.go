@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var currVersion = version{0, 8, 2}
+var currVersion = version{0, 8, 3}
 
 type version struct {
 	Major  uint64
@@ -174,7 +174,7 @@ func CheckForUpdate(client *http.Client, quiet bool) (errs []error) {
 	testVers := version{major, minor, bugfix}
 	versionComparison := currVersion.compareVersion(&testVers)
 	if versionComparison >= 1 {
-		errs = append(errs, fmt.Errorf("A new version is available. Please update to the new version.\nCurrent Version: %s\nNew Version: %s\nExiting.", currVersion.toString(), testVers.toString()))
+		errs = append(errs, fmt.Errorf("a new version is available. Please update to the new version.\nCurrent Version: %s\nNew Version: %s\nExiting", currVersion.toString(), testVers.toString()))
 		return errs
 	} else if versionComparison <= -1 && !quiet {
 		log.Printf("You are running a unreleased version.\nLatest released version:%s\nCurrent version:%s\n", testVers.toString(), currVersion.toString())

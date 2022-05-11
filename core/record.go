@@ -47,7 +47,7 @@ type Shift interface {
 	GetIdentifier() string
 }
 
-type DBShift struct {
+type dbShift struct {
 	totalEggs  int
 	stage      types.Stage
 	weaponSet  types.WeaponSchedule
@@ -61,7 +61,7 @@ type DBShift struct {
 	id         int
 }
 
-func (D *DBShift) GetTotalEggs() int {
+func (D *dbShift) GetTotalEggs() int {
 	sum := 0
 	for i := 0; i < D.clearWave; i++ {
 		sum += D.eggsWaves[i]
@@ -69,51 +69,51 @@ func (D *DBShift) GetTotalEggs() int {
 	return sum
 }
 
-func (D *DBShift) GetStage(_ *types.Schedule) (*types.Stage, []error) {
+func (D *dbShift) GetStage(_ *types.Schedule) (*types.Stage, []error) {
 	return &D.stage, nil
 }
 
-func (D *DBShift) GetWeaponSet(_ *types.Schedule) (*types.WeaponSchedule, []error) {
+func (D *dbShift) GetWeaponSet(_ *types.Schedule) (*types.WeaponSchedule, []error) {
 	return &D.weaponSet, nil
 }
 
-func (D *DBShift) GetEvents() (*types.EventArr, []error) {
+func (D *dbShift) GetEvents() (*types.EventArr, []error) {
 	return &D.events, nil
 }
 
-func (D *DBShift) GetTides() (*types.TideArr, []error) {
+func (D *dbShift) GetTides() (*types.TideArr, []error) {
 	return &D.tides, nil
 }
 
-func (D *DBShift) GetEggsWaves() []int {
+func (D *dbShift) GetEggsWaves() []int {
 	return D.eggsWaves
 }
 
-func (D *DBShift) GetClearWave() int {
+func (D *dbShift) GetClearWave() int {
 	return D.clearWave
 }
 
-func (D *DBShift) GetTime() (time.Time, []error) {
+func (D *dbShift) GetTime() (time.Time, []error) {
 	return time.Unix(int64(D.time), 0), nil
 }
 
-func (D *DBShift) GetIdentifier() string {
+func (D *dbShift) GetIdentifier() string {
 	return D.identifier
 }
 
-type DBShiftIterator struct {
+type dbShiftIterator struct {
 	db     *sql.DB
 	dbType string
 	id     int
 }
 
-func NewDBShiftIterator(db *sql.DB, dbType string) *DBShiftIterator {
-	return &DBShiftIterator{db: db, dbType: dbType}
+func NewDBShiftIterator(db *sql.DB, dbType string) *dbShiftIterator {
+	return &dbShiftIterator{db: db, dbType: dbType}
 }
 
-func (d *DBShiftIterator) Next() (Shift, []error) {
+func (d *dbShiftIterator) Next() (Shift, []error) {
 	eventStrs := []string{"", "", ""}
-	shift := &DBShift{
+	shift := &dbShift{
 		totalEggs:  0,
 		stage:      0,
 		weaponSet:  "",
@@ -188,8 +188,8 @@ func getRecordNames() []recordName {
 	}
 }
 
-func getAllRecords() map[recordName]*map[string]*map[types.WeaponSchedule]*record {
-	records := map[recordName]*map[string]*map[types.WeaponSchedule]*record{}
+func getAllRecords() CompleteRecordsMap {
+	records := CompleteRecordsMap{}
 	recordNames := getRecordNames()
 	for i := range recordNames {
 		records[recordNames[i]] = nil
@@ -197,8 +197,8 @@ func getAllRecords() map[recordName]*map[string]*map[types.WeaponSchedule]*recor
 	return records
 }
 
-func getLatestRecords() map[recordName]*record {
-	records := map[recordName]*record{}
+func getLatestRecords() PartialRecordsMap {
+	records := PartialRecordsMap{}
 	recordNames := getRecordNames()
 	for i := range recordNames {
 		records[recordNames[i]] = nil
